@@ -8,6 +8,8 @@ import { BrainCircuit, Heart, MessageCircle, Sparkles ,Brain, Trophy, Activity }
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription} from "@/components/ui/dialog";
+import { AnxietyGames } from "@/components/games/anxiety-games";
 
 
 export default function DashboardPage() {
@@ -49,6 +51,7 @@ export default function DashboardPage() {
 
   
 const [currentTime, setCurrentTime] = useState(new Date());
+const [showMoodModal, setShowMoodModal] = useState(false);
 
 useEffect(() => {
   const timer = setInterval(() => {
@@ -174,10 +177,30 @@ useEffect(() => {
             </div>
 {/*container grid for games */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <div className="lg:col-span-3 space-y-6"></div>
+                <div className="lg:col-span-3 space-y-6">
+                    {/*anxiety games*/}
+                    <AnxietyGames />
+
+                </div>
             </div>
         </div>
         </Container>
+
+{/*mood tracking model*/}
+
+        <Dialog open={showMoodModal} onOpenChange={setShowMoodModal}>
+            <DialogContent className="sm:max-w-[425px]">
+                <DialogHeader>
+                    <DialogTitle>How are you feeling?</DialogTitle>
+                    <DialogDescription>Move the slider to track your current mood.</DialogDescription>
+                </DialogHeader>
+                {/* Mood tracking form goes here */}
+            </DialogContent>
+        </Dialog>
+
+        {/*activity logger*/}
+
+    
         </div>
   );
 }
