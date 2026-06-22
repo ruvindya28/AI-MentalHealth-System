@@ -129,13 +129,16 @@ export default function Home(){
 
             {/*slider*/}
             <div className="relative px-2">
-              <div className={`absolute inset-0 bg-gradient-to-r ${currentEmotion.color} to-transparent blur-2xl -z-10 transition-all duration-500`} />
-              <Slider 
-              value={[emotion]}
-              onValueChange={(value) => setEmotion(value[0])}
-              max={100}
-              step={1}
-              className="pt-4"
+              <div
+                className={`absolute inset-0 bg-gradient-to-r ${currentEmotion.color} to-transparent blur-2xl -z-10 transition-all duration-500`}
+              />
+              <Slider
+                value={[emotion]}
+                onValueChange={(value) => setEmotion(value[0])}
+                min={0}
+                max={100}
+                step={1}
+                className="py-4"
               />
             </div>
             <div className="text-center">

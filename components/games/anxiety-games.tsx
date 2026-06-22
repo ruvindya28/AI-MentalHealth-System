@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle} from "@/components/ui/dialog";
 import { BreathingGame } from "./breathing-game";
 import { ZenGarden } from "./zen-garden";
+import { ForestGame } from "./forest-game";
 
 
 const games = [
@@ -83,7 +84,7 @@ export const AnxietyGames = ({onGamePlayed}: AnxietyGamesProps) => {
                 case "garden":
                     return <ZenGarden />;
                 case "forest":
-                    //return <ForestGame />;
+                    return <ForestGame />;
                 case "waves":
                     //return <OceanWaves />;
                 default:
