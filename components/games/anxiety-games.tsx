@@ -7,6 +7,7 @@ import { Gamepad2, Flower2, Wind, TreePine, Waves, Music2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle} from "@/components/ui/dialog";
 import { BreathingGame } from "./breathing-game";
+import { ZenGarden } from "./zen-garden";
 
 
 const games = [
@@ -80,7 +81,7 @@ export const AnxietyGames = ({onGamePlayed}: AnxietyGamesProps) => {
                 case "breathing":
                     return <BreathingGame />;
                 case "garden":
-                    //return <ZenGarden />;
+                    return <ZenGarden />;
                 case "forest":
                     //return <ForestGame />;
                 case "waves":

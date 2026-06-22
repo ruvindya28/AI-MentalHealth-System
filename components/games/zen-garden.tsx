@@ -47,6 +47,20 @@ export function ZenGarden() {
                             <span className="text-2xl">{item.icon}</span></motion.button>
                 ))}
             </div>
+            <div onClick={handleCanvasClick} className="relative w-full h-[400px] bg-primary/5 rounded-lg cursor-pointer overflow-hidden">
+            {placedItems.map((item, index) => (
+                <motion.div
+                key={index}
+                initial={{scale: 0}}
+                animate={{scale: 1}}
+                style={{
+                    position: "absolute",
+                    left: item.x - 12,
+                    top: item.y - 12,
+                }}
+                    className="text-2xl">{item.icon}</motion.div>
+            ))}
+                </div>
         </div>
     )
 }
