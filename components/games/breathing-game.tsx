@@ -4,9 +4,14 @@ import { AnimatePresence } from "framer-motion";
 import { useState, useEffect } from "react";
 
 import { motion } from "framer-motion";
+import { Wind } from "lucide-react";
+import { Progress } from "@/components/ui/progress";
+import { Button } from "../ui/button";
+
+export function BreathingGame() {
 
 const [phase, setPhase] = useState<"inhale" | "hold" | "exhale">("inhale");
-const [progeress, setProgress] = useState(0);
+const [progress, setProgress] = useState(0);
 const [round, setRound] = useState(1);
 const[isComplete, setIsComplete] = useState(false);
 const [isPaused, setIsPaused] = useState(false);
@@ -76,7 +81,7 @@ const handleReset = () => {
     setIsPaused(false);
 };
 
-export function BreathingGame() {
+
 
 return(
     <div className="flex flex-col items-center justify-center h-[400px] space-y-8">
@@ -91,12 +96,37 @@ return(
                         <motion.div
                         animate={{ scale: phase === "inhale" ? 1.5 : phase ==="exhale" ? 1 : 1.2,
                         
-                        }}></motion.div>
+                        }}
+                        transition={{duration: 4, ease: "easeInOut"}}
+                        className="absolute inset-0 bg-primary/10 rounded-full" />
+                        <div className="absolute inset-0 flex items-center justify-center">
+                            <Wind className="w-8 h-8 text-primary" />
+                        </div>
                     </div>
+                    <h3 className="text-2xl font-semibold">
+                        {phase === "inhale"
+                        ? "Breathe In"
+                    : phase === "hold"
+                    ? "Hold"
+                    : "Breathe Out"}
+                    </h3>
                 </motion.div>
         </AnimatePresence>
 
+        <div className="w-64">
+            <Progress value={progress} className="h-2" />
+        </div>
+
+        <div className="space-y-2 text-center">
+            <div className="text-sm text-muted-foreground">Round {round} of {TOTAL_ROUND}</div>
+            <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setIsPaused(!isPaused)}>
+                {isPaused ? "Resume" : "Pause"}
+            </Button>
+        </div>
+
     </div>
 )
-
 }

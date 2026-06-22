@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Gamepad2, Flower2, Wind, TreePine, Waves, Music2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle} from "@/components/ui/dialog";
+import { BreathingGame } from "./breathing-game";
 
 
 const games = [
@@ -77,7 +78,7 @@ export const AnxietyGames = ({onGamePlayed}: AnxietyGamesProps) => {
         const renderGame = () => {
             switch(selectedGame) {
                 case "breathing":
-                    //return <BreathingGame />;
+                    return <BreathingGame />;
                 case "garden":
                     //return <ZenGarden />;
                 case "forest":
