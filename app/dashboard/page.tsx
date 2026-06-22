@@ -10,6 +10,7 @@ import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription} from "@/components/ui/dialog";
 import { AnxietyGames } from "@/components/games/anxiety-games";
+import { MoodForm } from "@/components/mood/mood-form";
 
 
 export default function DashboardPage() {
@@ -195,6 +196,8 @@ useEffect(() => {
                     <DialogDescription>Move the slider to track your current mood.</DialogDescription>
                 </DialogHeader>
                 {/* Mood tracking form goes here */}
+<MoodForm onSuccess={() => setShowMoodModal(false)} />
+
             </DialogContent>
         </Dialog>
 
