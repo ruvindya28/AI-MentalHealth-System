@@ -11,9 +11,24 @@ import { format } from "date-fns";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription} from "@/components/ui/dialog";
 import { AnxietyGames } from "@/components/games/anxiety-games";
 import { MoodForm } from "@/components/mood/mood-form";
+import { ActivityLogger } from "@/components/activities/activity-logger";
 
 
 export default function DashboardPage() {
+
+    const [currentTime, setCurrentTime] = useState(new Date());
+const [showMoodModal, setShowMoodModal] = useState(false);
+const [isSavningMood, setIsSavingMood] = useState(false);
+const [showActivityLogger, setShowActivityLogger] = useState(false);
+
+
+useEffect(() => {
+  const timer = setInterval(() => {
+    setCurrentTime(new Date());
+  }, 1000);
+
+  return () => clearInterval(timer);
+}, []);
 
     const wellnessStats = [
         {
@@ -50,17 +65,22 @@ export default function DashboardPage() {
         },
     ]
 
-  
-const [currentTime, setCurrentTime] = useState(new Date());
-const [showMoodModal, setShowMoodModal] = useState(false);
+    const handleMoodSubmit = async (data: { moodScore: number }) => {
+    setIsSavingMood(true);
+    try {
+      setShowMoodModal(false);
+    } catch (error) {
+      console.error("Error saving mood:", error);
+    } finally {
+      setIsSavingMood(false);
+    }
+  };
 
-useEffect(() => {
-  const timer = setInterval(() => {
-    setCurrentTime(new Date());
-  }, 1000);
+  const handleAICheckIn = () => {
+    setShowActivityLogger(true);
+  };
 
-  return () => clearInterval(timer);
-}, []);
+
   return (
     <div className="min-h-screen bg-background p-8">
         <Container className="pt-20 pb-8 space-y-6">
@@ -124,7 +144,9 @@ useEffect(() => {
                                     <Button
                                     variant="outline"
                                     className={cn(
-                                        "flex flex-col h-[120px] px-4 py-3 group/mood hover:border-primary/50","justify-center items-center text-center","transition-all duration-200 group-hover:translate-y-[-2px]")}>
+                                        "flex flex-col h-[120px] px-4 py-3 group/mood hover:border-primary/50","justify-center items-center text-center","transition-all duration-200 group-hover:translate-y-[-2px]")}
+                                        
+                                        onClick={() => setShowMoodModal(true)}>
                                             <div className="w-10 h-10 rounded-full bg-rose-500/10 flex items-center justify-center mb-2">
                                             <Heart className="w-5 h-5 text-rose-500" />
                                             </div>
@@ -134,7 +156,8 @@ useEffect(() => {
                                         <Button
                                     variant="outline"
                                     className={cn(
-                                        "flex flex-col h-[120px] px-4 py-3 group/mood hover:border-primary/50","justify-center items-center text-center","transition-all duration-200 group-hover:translate-y-[-2px]")}>
+                                        "flex flex-col h-[120px] px-4 py-3 group/mood hover:border-primary/50","justify-center items-center text-center","transition-all duration-200 group-hover:translate-y-[-2px]")}
+                                        onClick={handleAICheckIn}>
                                             <div className="w-10 h-10 rounded-full bg-blue-500/10 flex items-center justify-center mb-2">
                                             <BrainCircuit className="w-5 h-5 text-blue-500" />
                                             </div>
@@ -196,12 +219,15 @@ useEffect(() => {
                     <DialogDescription>Move the slider to track your current mood.</DialogDescription>
                 </DialogHeader>
                 {/* Mood tracking form goes here */}
-<MoodForm onSuccess={() => setShowMoodModal(false)} />
+                <MoodForm onSubmit={handleMoodSubmit} isLoading={isSavningMood} />
 
             </DialogContent>
         </Dialog>
 
         {/*activity logger*/}
+
+        <ActivityLogger 
+        open={showActivityLogger} onOpenChange={setShowActivityLogger} />
 
     
         </div>

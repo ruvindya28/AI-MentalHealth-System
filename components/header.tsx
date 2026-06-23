@@ -4,8 +4,8 @@ import { AudioWaveform, Menu, X } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 import { SignInButton } from "@/components/auth/sign-in-button";
-import { Button } from "./button";
-import { ThemeToggle } from "./theme-toggle";
+import { Button } from "@/components/ui/button";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 
 export default function Header() {
