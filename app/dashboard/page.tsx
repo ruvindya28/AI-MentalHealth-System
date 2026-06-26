@@ -8,6 +8,7 @@ import { BrainCircuit, Heart, MessageCircle, Sparkles ,Brain, Trophy, Activity }
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
+import { useRouter } from "next/navigation";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription} from "@/components/ui/dialog";
 import { AnxietyGames } from "@/components/games/anxiety-games";
 import { MoodForm } from "@/components/mood/mood-form";
@@ -20,6 +21,9 @@ export default function DashboardPage() {
 const [showMoodModal, setShowMoodModal] = useState(false);
 const [isSavningMood, setIsSavingMood] = useState(false);
 const [showActivityLogger, setShowActivityLogger] = useState(false);
+
+
+const router = useRouter();
 
 
 useEffect(() => {
@@ -80,6 +84,10 @@ useEffect(() => {
     setShowActivityLogger(true);
   };
 
+  const handleStartTherapy = () =>{
+    router.push("therapy/new");
+  }
+
 
   return (
     <div className="min-h-screen bg-background p-8">
@@ -123,7 +131,7 @@ useEffect(() => {
                                 variant="default"
                                 className={cn(
                                 "w-full justify-center p-6 h-auto group/button","bg-gradient-to-r from-primary/90 to-primary hover:from-primary hover:to-primary/90","transition-all duration-200 group-hover:translate-y-[-2px]")}
-                                onClick={() => {}}>
+                                onClick={() => handleStartTherapy()}>
                                     <div className="flex items-center gap-4 w-full">
     <MessageCircle className="w-6 h-6 text-white shrink-0" />
 
