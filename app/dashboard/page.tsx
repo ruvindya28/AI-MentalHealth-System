@@ -4,7 +4,7 @@ import { Container } from "@/components/ui/container";
 import { useState , useEffect } from "react";
 import {motion} from 'framer-motion';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { BrainCircuit, Heart, MessageCircle, Sparkles ,Brain, Trophy, Activity } from "lucide-react";
+import { BrainCircuit, Heart, MessageCircle, Sparkles ,Brain, Trophy, Activity, FileText, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
@@ -13,6 +13,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription} fr
 import { AnxietyGames } from "@/components/games/anxiety-games";
 import { MoodForm } from "@/components/mood/mood-form";
 import { ActivityLogger } from "@/components/activities/activity-logger";
+import { VoiceSessionCard, type CallRecord } from "@/components/voice/voice-session-card";
+import { CallHistory } from "@/components/voice/call-history";
 
 
 export default function DashboardPage() {
@@ -22,6 +24,7 @@ const [showMoodModal, setShowMoodModal] = useState(false);
 const [isSavingMood, setIsSavingMood] = useState(false);
 const [showActivityLogger, setShowActivityLogger] = useState(false);
 const [todayMoodScore, setTodayMoodScore] = useState<number | null>(null);
+const [callHistory, setCallHistory] = useState<CallRecord[]>([]);
 
 
 const router = useRouter();
@@ -58,7 +61,7 @@ useEffect(() => {
         },
          {
             title:"Therapy Sessions",
-            value: "0 sessions",
+            value: `${callHistory.length} session${callHistory.length === 1 ? "" : "s"}`,
             icon: Heart,
             color: "text-rose-500",
             bgColor: "bg-rose-500/10",
@@ -88,6 +91,10 @@ useEffect(() => {
 
   const handleAICheckIn = () => {
     setShowActivityLogger(true);
+  };
+
+  const handleCallEnd = (record: CallRecord) => {
+    setCallHistory((prev) => [record, ...prev]);
   };
 
   const handleStartTherapy = () =>{
@@ -213,6 +220,15 @@ useEffect(() => {
 
 
             </div>
+{/*voice session + call history*/}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div className="lg:col-span-1">
+                    <VoiceSessionCard onCallEnd={handleCallEnd} />
+                </div>
+                <div className="lg:col-span-2">
+                    <CallHistory calls={callHistory} />
+                </div>
+            </div>
 {/*container grid for games */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <div className="lg:col-span-3 space-y-6">
@@ -221,6 +237,25 @@ useEffect(() => {
 
                 </div>
             </div>
+
+{/*download report*/}
+            <Card className="border-primary/10">
+                <CardContent className="p-6 flex flex-col sm:flex-row items-center justify-between gap-4">
+                    <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                            <FileText className="w-6 h-6 text-primary" />
+                        </div>
+                        <div>
+                            <h3 className="font-semibold">Download Report</h3>
+                            <p className="text-sm text-muted-foreground">Get a PDF summary of your mood, activities, and sessions</p>
+                        </div>
+                    </div>
+                    <Button disabled className="gap-2 shrink-0">
+                        <Download className="w-4 h-4" />
+                        Coming Soon
+                    </Button>
+                </CardContent>
+            </Card>
         </div>
         </Container>
 
