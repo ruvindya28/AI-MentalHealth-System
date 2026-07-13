@@ -119,12 +119,20 @@ return(
 
         <div className="space-y-2 text-center">
             <div className="text-sm text-muted-foreground">Round {round} of {TOTAL_ROUND}</div>
-            <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setIsPaused(!isPaused)}>
-                {isPaused ? "Resume" : "Pause"}
-            </Button>
+            <div className="flex gap-2 justify-center">
+                <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setIsPaused(!isPaused)}>
+                    {isPaused ? "Resume" : "Pause"}
+                </Button>
+                <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleReset}>
+                    Reset
+                </Button>
+            </div>
         </div>
 
     </div>

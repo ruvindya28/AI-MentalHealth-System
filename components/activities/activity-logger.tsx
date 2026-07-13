@@ -1,8 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { motion } from "framer-motion";
-import { Plus, X, Loader2 } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -49,7 +47,18 @@ export function ActivityLogger({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-}
+    setIsLoading(true);
+    try {
+      setType("");
+      setName("");
+      setDuration("");
+      setDescription("");
+      onOpenChange(false);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
  return(
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
@@ -106,13 +115,12 @@ export function ActivityLogger({
             <Button
               type="button"
               variant="ghost"
+              onClick={() => onOpenChange(false)}
             >
               Cancel
             </Button>
-            <Button type="submit" disabled>
-              
-                Save Activity
-
+            <Button type="submit" disabled={isLoading || !type || !name}>
+              {isLoading ? "Saving..." : "Save Activity"}
             </Button>
           </div>
         </form>

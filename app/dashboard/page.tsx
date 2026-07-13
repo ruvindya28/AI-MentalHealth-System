@@ -17,16 +17,21 @@ import { ActivityLogger } from "@/components/activities/activity-logger";
 
 export default function DashboardPage() {
 
-    const [currentTime, setCurrentTime] = useState(new Date());
+    const [currentTime, setCurrentTime] = useState<Date | null>(null);
 const [showMoodModal, setShowMoodModal] = useState(false);
-const [isSavningMood, setIsSavingMood] = useState(false);
+const [isSavingMood, setIsSavingMood] = useState(false);
 const [showActivityLogger, setShowActivityLogger] = useState(false);
+const [todayMoodScore, setTodayMoodScore] = useState<number | null>(null);
 
 
 const router = useRouter();
 
 
 useEffect(() => {
+  // Client-only clock: starts null to match SSR output, then syncs to
+  // the real time. This first set is intentional, not a derivable value.
+  // eslint-disable-next-line react-hooks/set-state-in-effect
+  setCurrentTime(new Date());
   const timer = setInterval(() => {
     setCurrentTime(new Date());
   }, 1000);
@@ -37,7 +42,7 @@ useEffect(() => {
     const wellnessStats = [
         {
             title:"Mood Score",
-            value: "No data",
+            value: todayMoodScore === null ? "No data" : `${todayMoodScore}/100`,
             icon: Brain,
             color: "text-purple-500",
             bgColor: "bg-purple-500/10",
@@ -72,6 +77,7 @@ useEffect(() => {
     const handleMoodSubmit = async (data: { moodScore: number }) => {
     setIsSavingMood(true);
     try {
+      setTodayMoodScore(data.moodScore);
       setShowMoodModal(false);
     } catch (error) {
       console.error("Error saving mood:", error);
@@ -101,7 +107,7 @@ useEffect(() => {
             >
             <h1 className="text-3xl font-bold">Welcome back</h1>
             <p className="text-muted-foreground text-sm">
-                {currentTime.toLocaleTimeString("en-US",{
+                {currentTime?.toLocaleTimeString("en-US",{
                     weekday: "long",
                     month: "long",
                     day: "numeric",
@@ -184,8 +190,8 @@ useEffect(() => {
                 <CardHeader>
                     <div className="flex items-center justify-between">
                         <div>
-                            <CardTitle>Today's Overview</CardTitle>
-                            <CardDescription>Your wellness matrics for{" "}{format(new Date(),"MMMMM dd, yyyy")}</CardDescription>
+                            <CardTitle>Today&apos;s Overview</CardTitle>
+                            <CardDescription>Your wellness metrics for{" "}{format(new Date(),"MMMM dd, yyyy")}</CardDescription>
                             </div></div>
                             </CardHeader>
                             <CardContent className="grid grid-cols-2 gap-3">
@@ -227,7 +233,7 @@ useEffect(() => {
                     <DialogDescription>Move the slider to track your current mood.</DialogDescription>
                 </DialogHeader>
                 {/* Mood tracking form goes here */}
-                <MoodForm onSubmit={handleMoodSubmit} isLoading={isSavningMood} />
+                <MoodForm onSubmit={handleMoodSubmit} isLoading={isSavingMood} />
 
             </DialogContent>
         </Dialog>

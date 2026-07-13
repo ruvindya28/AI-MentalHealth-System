@@ -4,16 +4,14 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { Loader2 } from "lucide-react";
-import { useRouter } from "next/navigation";
 
 interface MoodFormProps {
-  onSuccess?: () => void;
+  onSubmit: (data: { moodScore: number }) => void | Promise<void>;
+  isLoading?: boolean;
 }
 
-export function MoodForm({ onSuccess }: MoodFormProps) {
+export function MoodForm({ onSubmit, isLoading }: MoodFormProps) {
   const [moodScore, setMoodScore] = useState(50);
-  const [isLoading, setIsLoading] = useState(false);
-  const router = useRouter();
 
   const emotions = [
     { value: 0, label: "😔", description: "Very Low" },
@@ -25,8 +23,6 @@ export function MoodForm({ onSuccess }: MoodFormProps) {
 
   const currentEmotion =
     emotions.find((em) => Math.abs(moodScore - em.value) < 15) || emotions[2];
-
-      // Call onSuccess to close the modal    
 
   return (
     <div className="space-y-6 py-4">
@@ -68,8 +64,18 @@ export function MoodForm({ onSuccess }: MoodFormProps) {
 
       {/* Submit button */}
       <Button
-        className="w-full">
+        className="w-full"
+        disabled={isLoading}
+        onClick={() => onSubmit({ moodScore })}
+      >
+        {isLoading ? (
+          <>
+            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+            Saving...
+          </>
+        ) : (
           "Save Mood"
+        )}
       </Button>
     </div>
   );

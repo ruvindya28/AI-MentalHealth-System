@@ -4,7 +4,6 @@ import { useState} from "react";
 import { motion } from "framer-motion";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Gamepad2, Flower2, Wind, TreePine, Waves, Music2 } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle} from "@/components/ui/dialog";
 import { BreathingGame } from "./breathing-game";
 import { ZenGarden } from "./zen-garden";

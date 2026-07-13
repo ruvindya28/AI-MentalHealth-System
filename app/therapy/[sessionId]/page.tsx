@@ -1,7 +1,6 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import {
   Send,
@@ -11,11 +10,11 @@ import {
   Sparkles,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, type Variants } from "framer-motion";
 import ReactMarkdown from "react-markdown";
 import { Badge } from "@/components/ui/badge";
 
-const glowAnimation = {
+const glowAnimation: Variants = {
   initial: { opacity: 0.5, scale: 1 },
   animate: {
     opacity: [0.5, 1, 0.5],
@@ -29,17 +28,21 @@ const glowAnimation = {
 };
 
 
+interface Message {
+  role: "user" | "assistant";
+  content: string;
+  timestamp: Date;
+  metadata?: {
+    technique?: string;
+    goal?: string;
+  };
+}
+
 export default function TherapyPage() {
   const [message, setMessage] = useState("");
-  const [isTyping, setIsTyping] = useState(false);
-  const [mounted, setMounted] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isChatPaused, setIsChatPaused] = useState(false);
-  const [messages, setMessages] = useState<any[]>([]);
-
-   useEffect(() => {
-    setMounted(true);
-  }, []);
+  const [isTyping] = useState(false);
+  const [isChatPaused] = useState(false);
+  const [messages] = useState<Message[]>([]);
 
   const messagesEndRef =
   useRef<HTMLDivElement>(null);
@@ -85,7 +88,7 @@ export default function TherapyPage() {
                       className="absolute inset-0 bg-primary/20 blur-2xl rounded-full"
                       initial="initial"
                       animate="animate"
-                      variants={glowAnimation as any}
+                      variants={glowAnimation}
                     />
                       <div className="relative flex items-center gap-2 text-2xl font-semibold">
                       <div className="relative">
@@ -94,7 +97,7 @@ export default function TherapyPage() {
                           className="absolute inset-0 text-primary"
                           initial="initial"
                           animate="animate"
-                          variants={glowAnimation as any}
+                          variants={glowAnimation}
                         >
                           <Sparkles className="w-6 h-6" />
                         </motion.div>

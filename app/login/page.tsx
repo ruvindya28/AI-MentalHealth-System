@@ -62,7 +62,7 @@ export default function LoginPage(){
                         Sign In
                     </Button>
                     <div className="flex items-center justify-center gap-2 text-sm">
-                        <span className="text-muted-foreground">Dont't have a account?</span>
+                        <span className="text-muted-foreground">Don&apos;t have an account?</span>
                         <Link href="/signup" className="text-primary font-medium underline">Sign Up</Link>
                         <span className="text-muted-foreground">.</span>
                         <Link href="/forgot-password" className="text-primary underline">Forgot Password?</Link>

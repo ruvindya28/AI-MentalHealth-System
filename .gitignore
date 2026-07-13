@@ -2,8 +2,9 @@
 
 # dependencies
 /node_modules
-/backend
-./backend
+backend/node_modules
+backend/dist
+backend/*.log
 /.pnp
 .pnp.*
 .yarn/*

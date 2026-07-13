@@ -39,7 +39,7 @@ export default function AboutPage() {
           About Aura3.0
         </h1>
         <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
-          We're revolutionizing mental health support by combining cutting-edge
+          We&apos;re revolutionizing mental health support by combining cutting-edge
           AI technology with the security and transparency of blockchain.
         </p>
       </motion.div>
