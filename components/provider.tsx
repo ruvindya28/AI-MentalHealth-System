@@ -1,6 +1,7 @@
 "use client";
 
 import { ThemeProvider } from "next-themes";
+import { WellnessProvider } from "@/lib/contexts/wellness-context";
 
 export function Providers({ children }: { children:
     React.ReactNode }){
@@ -11,7 +12,7 @@ export function Providers({ children }: { children:
             enableSystem
             disableTransitionOnChange
             >
-                {children}
+                <WellnessProvider>{children}</WellnessProvider>
             </ThemeProvider>
         )
     }

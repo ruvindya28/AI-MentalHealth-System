@@ -8,11 +8,21 @@ import {
   User,
   Loader2,
   Sparkles,
+  AlertTriangle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence, type Variants } from "framer-motion";
 import ReactMarkdown from "react-markdown";
 import { Badge } from "@/components/ui/badge";
+import { LiveAnalysisPanel } from "@/components/therapy/live-analysis-panel";
+import {
+  analyzeText,
+  EMOTION_COLORS,
+  type CrisisLevel,
+  type Emotion,
+} from "@/lib/mock-emotion-analyzer";
+import { generateReply } from "@/lib/mock-therapist-responses";
+import { useWellness } from "@/lib/contexts/wellness-context";
 
 const glowAnimation: Variants = {
   initial: { opacity: 0.5, scale: 1 },
@@ -27,7 +37,6 @@ const glowAnimation: Variants = {
   },
 };
 
-
 interface Message {
   role: "user" | "assistant";
   content: string;
@@ -35,20 +44,32 @@ interface Message {
   metadata?: {
     technique?: string;
     goal?: string;
+    emotion?: Emotion;
+    confidence?: number;
+    crisisLevel?: CrisisLevel;
   };
 }
 
+const SUGGESTED_PROMPTS = [
+  "I've been feeling anxious about work lately",
+  "I'm not sure how to explain how I feel today",
+  "I had a really good day and want to talk about it",
+];
+
 export default function TherapyPage() {
   const [message, setMessage] = useState("");
-  const [isTyping] = useState(false);
+  const [isTyping, setIsTyping] = useState(false);
   const [isChatPaused] = useState(false);
-  const [messages] = useState<Message[]>([]);
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [latestEmotion, setLatestEmotion] = useState<Emotion | null>(null);
+  const [latestConfidence, setLatestConfidence] = useState<number | null>(null);
+  const [crisisLevel, setCrisisLevel] = useState<CrisisLevel>("none");
 
-  const messagesEndRef =
-  useRef<HTMLDivElement>(null);
+  const { addEmotionEntry } = useWellness();
 
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
-   const scrollToBottom = () => {
+  const scrollToBottom = () => {
     if (messagesEndRef.current) {
       setTimeout(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -56,17 +77,77 @@ export default function TherapyPage() {
     }
   };
 
-  useEffect(() =>{
-    if(!isTyping){
-        scrollToBottom();
+  useEffect(() => {
+    if (!isTyping) {
+      scrollToBottom();
     }
-  },[messages, isTyping]);
+  }, [messages, isTyping]);
+
+  const emotionCounts = messages.reduce<Partial<Record<Emotion, number>>>(
+    (acc, msg) => {
+      const emotion = msg.metadata?.emotion;
+      if (emotion) {
+        acc[emotion] = (acc[emotion] ?? 0) + 1;
+      }
+      return acc;
+    },
+    {}
+  );
+
+  const sendMessage = (text: string) => {
+    const trimmed = text.trim();
+    if (!trimmed || isTyping || isChatPaused) return;
+
+    const analysis = analyzeText(trimmed);
+
+    const userMessage: Message = {
+      role: "user",
+      content: trimmed,
+      timestamp: new Date(),
+      metadata: {
+        emotion: analysis.emotion,
+        confidence: analysis.confidence,
+        crisisLevel: analysis.crisisLevel,
+      },
+    };
+
+    setMessages((prev) => [...prev, userMessage]);
+    setLatestEmotion(analysis.emotion);
+    setLatestConfidence(analysis.confidence);
+    setCrisisLevel(analysis.crisisLevel);
+    addEmotionEntry({
+      emotion: analysis.emotion,
+      confidence: analysis.confidence,
+      crisisLevel: analysis.crisisLevel,
+    });
+    setMessage("");
+    setIsTyping(true);
+
+    setTimeout(() => {
+      const reply = generateReply(analysis);
+      setMessages((prev) => [
+        ...prev,
+        {
+          role: "assistant",
+          content: reply.text,
+          timestamp: new Date(),
+          metadata: { technique: reply.technique },
+        },
+      ]);
+      setIsTyping(false);
+    }, 900);
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    sendMessage(message);
+  };
 
   return (
    <div className="relative max-w-7xl mx-auto px-4">
     <div className="flex h-[calc(100vh-4rem)] mt-20 gap-6">
         <div className="flex-1 flex flex-col overflow-hidden bg-white dark:bg-background rounded-lg border">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 p-4 border-b">
                 <div className="w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center">
                 <Bot className="w-5 h-5" /></div>
                 <div>
@@ -75,9 +156,26 @@ export default function TherapyPage() {
                 </div>
             </div>
 
-            {/*More to come here*/}
-          
-        
+            {(crisisLevel === "medium" || crisisLevel === "high") && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: "auto" }}
+                className="mx-4 mt-4 p-4 rounded-xl border border-red-500/30 bg-red-500/10 flex items-start gap-3"
+              >
+                <AlertTriangle className="w-5 h-5 text-red-600 dark:text-red-400 shrink-0 mt-0.5" />
+                <div className="space-y-1">
+                  <p className="text-sm font-semibold text-red-700 dark:text-red-400">
+                    We noticed signs of distress
+                  </p>
+                  <p className="text-sm text-red-700/90 dark:text-red-400/90">
+                    You&apos;re not alone. If you&apos;re in immediate danger, please
+                    contact your local emergency number or a crisis helpline right
+                    now.
+                  </p>
+                </div>
+              </motion.div>
+            )}
+
          {messages.length === 0 ? (
             // Welcome screen with suggested questions
             <div className="flex-1 flex items-center justify-center p-4">
@@ -110,6 +208,19 @@ export default function TherapyPage() {
                       How can I assist you today?
                     </p>
                   </div>
+                </div>
+
+                <div className="flex flex-col gap-2">
+                  {SUGGESTED_PROMPTS.map((prompt) => (
+                    <button
+                      key={prompt}
+                      type="button"
+                      onClick={() => sendMessage(prompt)}
+                      className="text-left text-sm px-4 py-3 rounded-xl border border-primary/10 hover:border-primary/30 hover:bg-primary/5 transition-colors duration-200"
+                    >
+                      {prompt}
+                    </button>
+                  ))}
                 </div>
     </div>
     </div>
@@ -154,6 +265,18 @@ export default function TherapyPage() {
                                 {msg.metadata.technique}
                               </Badge>
                             )}
+                            {msg.metadata?.emotion && (
+                              <Badge
+                                variant="secondary"
+                                className={cn(
+                                  "text-xs",
+                                  EMOTION_COLORS[msg.metadata.emotion].bg,
+                                  EMOTION_COLORS[msg.metadata.emotion].text
+                                )}
+                              >
+                                {msg.metadata.emotion} · {msg.metadata.confidence}%
+                              </Badge>
+                            )}
                           </div>
                           <div className="prose prose-sm dark:prose-invert leading-relaxed">
                             <ReactMarkdown>{msg.content}</ReactMarkdown>
@@ -193,8 +316,8 @@ export default function TherapyPage() {
 
                  {/* Input area */}
           <div className="border-t bg-background/50 backdrop-blur supports-[backdrop-filter]:bg-background/50 p-4">
-            <form action=""
-              onSubmit={() => {}}
+            <form
+              onSubmit={handleSubmit}
               className="max-w-3xl mx-auto flex gap-4 items-end relative"
             >
               <div className="flex-1 relative group">
@@ -220,7 +343,7 @@ export default function TherapyPage() {
                   onKeyDown={(e) => {
                     if (e.key === "Enter" && !e.shiftKey) {
                       e.preventDefault();
-                      //handleSubmit(e);
+                      sendMessage(message);
                     }
                   }}
                 />
@@ -237,10 +360,6 @@ export default function TherapyPage() {
                     "group-hover:scale-105 group-focus-within:scale-105"
                   )}
                   disabled={isTyping || isChatPaused || !message.trim()}
-                  onClick={(e) => {
-                    e.preventDefault();
-                    //handleSubmit(e);
-                  }}
                 >
                   <Send className="w-4 h-4" />
                 </Button>
@@ -256,9 +375,18 @@ export default function TherapyPage() {
             </div>
           </div>
                 </div>
+
+                <div className="hidden lg:flex w-80 shrink-0 flex-col gap-4 py-4 overflow-y-auto">
+                  <LiveAnalysisPanel
+                    latestEmotion={latestEmotion}
+                    latestConfidence={latestConfidence}
+                    crisisLevel={crisisLevel}
+                    emotionCounts={emotionCounts}
+                  />
                 </div>
 
         </div>
-    
+    </div>
+
   );
 }
