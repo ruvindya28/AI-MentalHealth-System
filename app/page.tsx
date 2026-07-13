@@ -2,7 +2,7 @@
 
 import { Ripple } from "@/components/ui/ripple";
 import { useState } from "react";
-import {motion} from 'framer-motion';
+import {motion, AnimatePresence} from 'framer-motion';
 import Link from "next/link";
 import { ArrowRight, Waves, Mic, BrainCircuit, Lock, FileText, MessageSquareHeart, HeartPulse, TrendingUp } from "lucide-react";
 import { Slider } from "@/components/ui/slider";
@@ -12,6 +12,9 @@ import {
   CardContent,
   CardHeader,
 } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
+import { analyzeText, EMOTION_COLORS, CRISIS_COLORS } from "@/lib/mock-emotion-analyzer";
 
 export default function Home(){
   const emotions = [
@@ -25,19 +28,18 @@ export default function Home(){
 
   const features = [
     {
-      icon: Mic,
-      title: "Text & Voice Sessions",
-      description: "Talk to your AI therapist by typing or speaking, whatever feels most comfortable",
-      color: "from-rose-500/20",
-      delay:0.2,
-    },
-    {
       icon: BrainCircuit,
       title: "Emotion & Crisis Detection",
       description: "Every conversation is analyzed in real time to understand how you feel and flag crisis situations early",
       color: "from-amber-500/20",
+      delay:0.2,
+    },
+    {
+      icon: Mic,
+      title: "Text & Voice Sessions",
+      description: "Talk to your AI therapist by typing or speaking, whatever feels most comfortable",
+      color: "from-rose-500/20",
       delay:0.4,
-
     },
     {
       icon: Lock,
@@ -79,8 +81,10 @@ export default function Home(){
   ]
 
   const [emotion, setEmotion] = useState(50);
+  const [demoText, setDemoText] = useState("");
 
   const currentEmotion = emotions.find((em) => Math.abs(emotion - em.value) < 15) || emotions[2];
+  const demoAnalysis = demoText.trim().length > 3 ? analyzeText(demoText) : null;
 
   return (
     <div className="flex flex-col min-h-screen overflow-hidden">
@@ -184,6 +188,67 @@ export default function Home(){
               </Button>
             </motion.div>
          </motion.div>
+      </section>
+      <section className="relative py-16 px-4">
+        <div className="max-w-3xl mx-auto">
+          <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+          viewport={{ once: true }}
+          >
+            <Card className="border-primary/10 p-6 md:p-8 bg-card/50 backdrop-blur-sm">
+              <div className="flex items-center gap-2 mb-2">
+                <BrainCircuit className="w-5 h-5 text-primary" />
+                <h3 className="font-semibold text-lg">See our AI in action</h3>
+                <Badge variant="secondary" className="text-xs">Preview</Badge>
+              </div>
+              <p className="text-sm text-muted-foreground mb-4">
+                Type how you&apos;re feeling and watch our emotion &amp; crisis
+                detection respond in real time.
+              </p>
+              <textarea
+                value={demoText}
+                onChange={(e) => setDemoText(e.target.value)}
+                placeholder="e.g. I've been feeling really anxious about work lately..."
+                rows={2}
+                className="w-full resize-none rounded-xl border bg-background p-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 placeholder:text-muted-foreground/70"
+              />
+              <AnimatePresence>
+                {demoAnalysis && (
+                  <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0 }}
+                  className="mt-4 flex flex-wrap items-center gap-3"
+                  >
+                    <span
+                    className={cn(
+                      "px-3 py-1.5 rounded-full text-sm font-medium",
+                      EMOTION_COLORS[demoAnalysis.emotion].bg,
+                      EMOTION_COLORS[demoAnalysis.emotion].text
+                    )}
+                    >
+                      Detected: {demoAnalysis.emotion} · {demoAnalysis.confidence}%
+                    </span>
+                    <span
+                    className={cn(
+                      "px-3 py-1.5 rounded-full text-sm font-medium bg-muted",
+                      CRISIS_COLORS[demoAnalysis.crisisLevel].text
+                    )}
+                    >
+                      Crisis risk: {CRISIS_COLORS[demoAnalysis.crisisLevel].label}
+                    </span>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+              <p className="text-xs text-muted-foreground mt-4 border-t pt-3">
+                This is a heuristic preview, not a clinical diagnosis. Nothing you
+                type here is stored or sent anywhere.
+              </p>
+            </Card>
+          </motion.div>
+        </div>
       </section>
       <section className="relative py-20 px-4 overflow-hidden">
         <div className="max-w-6xl mx-auto">

@@ -15,6 +15,9 @@ import { MoodForm } from "@/components/mood/mood-form";
 import { ActivityLogger } from "@/components/activities/activity-logger";
 import { VoiceSessionCard, type CallRecord } from "@/components/voice/voice-session-card";
 import { CallHistory } from "@/components/voice/call-history";
+import { EmotionTrends } from "@/components/dashboard/emotion-trends";
+import { CrisisAlerts } from "@/components/dashboard/crisis-alerts";
+import { useWellness } from "@/lib/contexts/wellness-context";
 
 
 export default function DashboardPage() {
@@ -26,6 +29,7 @@ const [showActivityLogger, setShowActivityLogger] = useState(false);
 const [todayMoodScore, setTodayMoodScore] = useState<number | null>(null);
 const [callHistory, setCallHistory] = useState<CallRecord[]>([]);
 
+const { emotionLog } = useWellness();
 
 const router = useRouter();
 
@@ -227,6 +231,15 @@ useEffect(() => {
                 </div>
                 <div className="lg:col-span-2">
                     <CallHistory calls={callHistory} />
+                </div>
+            </div>
+{/*emotion insights*/}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div className="lg:col-span-2">
+                    <EmotionTrends entries={emotionLog} />
+                </div>
+                <div className="lg:col-span-1">
+                    <CrisisAlerts entries={emotionLog} />
                 </div>
             </div>
 {/*container grid for games */}

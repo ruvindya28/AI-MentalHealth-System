@@ -1,17 +1,28 @@
 "use client"
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Card } from "@/components/ui/card";
 import { Container } from "@/components/ui/container";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import {Lock ,Mail } from "lucide-react";
+import { Lock, Mail, ShieldCheck, Loader2 } from "lucide-react";
 import Link from "next/link";
 
 
 export default function LoginPage(){
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const router = useRouter();
+
+    const handleSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        setIsSubmitting(true);
+        // No auth backend yet — this simulates a successful sign-in for now.
+        router.push("/dashboard");
+    };
+
     return(
         <div className="min-h-screen w-full flex items-center bg-gradient-to-r from-primary/10 via-background to-secondary/30">
             <Container className="flex flex-col items-center justify-center w-full">
@@ -20,8 +31,7 @@ export default function LoginPage(){
                     <p className="text-base text-muted-foreground font-medium">
                         Welcome back! Please sign in to continue your journey.
                     </p>
-                    <div>
-                        <form className="space-y-3">
+                    <form onSubmit={handleSubmit} className="space-y-3 mt-4">
                             <div>
                             <label htmlFor="email" className="block text-base font-semibold mb-1">
                                 Email Address
@@ -54,18 +64,31 @@ export default function LoginPage(){
                                     />
                                 </div>
                             </div>
-                        </form>
-                    </div>
-                    <Button className="w-full py-2 text-base rounded-xl font-bold bg-gradient-to-r from-primary to-primary/80 shadow-md hover:from-primary/80 hover:to-primary"
-                    size="lg"
-                    type="button">
-                        Sign In
-                    </Button>
-                    <div className="flex items-center justify-center gap-2 text-sm">
+                            <Button
+                            className="w-full py-2 text-base rounded-xl font-bold bg-gradient-to-r from-primary to-primary/80 shadow-md hover:from-primary/80 hover:to-primary"
+                            size="lg"
+                            type="submit"
+                            disabled={isSubmitting}
+                            >
+                                {isSubmitting ? (
+                                    <>
+                                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                        Signing in...
+                                    </>
+                                ) : (
+                                    "Sign In"
+                                )}
+                            </Button>
+                    </form>
+                    <div className="flex items-center justify-center gap-2 text-sm mt-4">
                         <span className="text-muted-foreground">Don&apos;t have an account?</span>
                         <Link href="/signup" className="text-primary font-medium underline">Sign Up</Link>
                         <span className="text-muted-foreground">.</span>
                         <Link href="/forgot-password" className="text-primary underline">Forgot Password?</Link>
+                    </div>
+                    <div className="flex items-center justify-center gap-1.5 text-xs text-muted-foreground mt-4 border-t pt-4">
+                        <ShieldCheck className="w-3.5 h-3.5" />
+                        Your data is encrypted and kept confidential
                     </div>
                     </Card>
                     </Container>
