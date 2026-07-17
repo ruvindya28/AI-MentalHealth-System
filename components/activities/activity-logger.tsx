@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { toast } from "sonner";
 import {
   Dialog,
   DialogContent,
@@ -49,6 +50,7 @@ export function ActivityLogger({
     e.preventDefault();
     setIsLoading(true);
     try {
+      toast.success("Activity logged", { description: `${name} added to your check-ins.` });
       setType("");
       setName("");
       setDuration("");

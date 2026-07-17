@@ -1,93 +1,113 @@
 "use client";
 
-import { AudioWaveform, Menu, X } from "lucide-react";
+import { AudioWaveform, Menu, X, UserRound } from "lucide-react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { SignInButton } from "@/components/auth/sign-in-button";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/theme-toggle";
-
+import { cn } from "@/lib/utils";
 
 export default function Header() {
-    const navItems = [
-        { href: "/features", label: "Features" },
-        { href: "/about", label: "About MindCare" },
+    const appNavItems = [
+        { href: "/dashboard", label: "Dashboard" },
+        { href: "/therapy/new", label: "Chat" },
+        { href: "/history", label: "History" },
+        { href: "/reports", label: "Reports" },
     ];
 
+    const marketingNavItems = [
+        { href: "/features", label: "Features" },
+        { href: "/about", label: "About" },
+    ];
+
+    const navItems = [...appNavItems, ...marketingNavItems];
+
+    const pathname = usePathname();
     const [isMenuOpen, setIsMenuOpen] = useState(false);
-    
+
     return (
-        <div className="w-full fixed top-0 z-50 bg-background/95 backdrop-blur-2xl">
-            <div className="absolute inset-0 border-b border-primary/10"></div>
-        <header className="relative max-w-6xl mx-auto px-4 py-2">
-            <div className="flex h-16 items-center justify-between">
-                <Link
-                 href="/"
-                 className="flex items-center space-x-2 transition-opacity hover:opacity-80"
-                 >
-                    <AudioWaveform 
-                    className="h-7 w-7 text-primary animate-pulse-gentle"
-                    />
-                    <div className="flex flex-col">
-                        <span className="text-lg font-semibold bg-gradient-to-r from-primary to-primary/80 text-transparent bg-clip-text">MindCare</span>
+        <div className="fixed top-0 z-50 w-full bg-background/80 backdrop-blur-xl">
+            <div className="absolute inset-0 border-b border-border/60" />
+            <header className="relative mx-auto max-w-6xl px-4 py-2">
+                <div className="flex h-16 items-center justify-between">
+                    <Link
+                        href="/"
+                        className="flex items-center space-x-2 transition-opacity hover:opacity-80"
+                    >
+                        <AudioWaveform className="h-7 w-7 text-primary animate-breathe" />
+                        <span className="text-lg font-semibold font-heading bg-linear-to-r from-primary to-accent bg-clip-text text-transparent">
+                            MindCare
+                        </span>
+                    </Link>
+
+                    <div className="flex items-center gap-3">
+                        <nav className="hidden lg:flex items-center gap-1">
+                            {navItems.map((item) => {
+                                const active = pathname === item.href;
+                                return (
+                                    <Link
+                                        key={item.href}
+                                        href={item.href}
+                                        className={cn(
+                                            "relative px-3.5 py-2 text-sm font-medium transition-colors rounded-full",
+                                            active
+                                                ? "text-foreground bg-muted"
+                                                : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
+                                        )}
+                                    >
+                                        {item.label}
+                                    </Link>
+                                );
+                            })}
+                        </nav>
+                        <div className="flex items-center gap-2">
+                            <Button
+                                asChild
+                                variant="ghost"
+                                size="icon"
+                                className="rounded-full"
+                                aria-label="Profile settings"
+                            >
+                                <Link href="/profile">
+                                    <UserRound className="h-4 w-4" />
+                                </Link>
+                            </Button>
+                            <ThemeToggle />
+                            <SignInButton className="rounded-full" />
+
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                className="rounded-full lg:hidden"
+                                aria-label="Toggle menu"
+                                onClick={() => setIsMenuOpen(!isMenuOpen)}
+                            >
+                                {isMenuOpen ? (
+                                    <X className="h-5 w-5" />
+                                ) : (
+                                    <Menu className="h-5 w-5" />
+                                )}
+                            </Button>
+                        </div>
                     </div>
-                 </Link>
-
-                 {/* Navigation */}
-                 <div className="flex items-center gap-4">
-                 <nav className="hidden md:flex items-center space-x-1">
-                    {navItems.map((item) => {
-                        return (
-                        <Link
-                        key={item.href}
-                        href={item.href}
-                        className="px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors relative group"
-                        >
-                            {item.label}
-                            <span className="absolute bottom-0 left-0 w-full h-0.5 bg-primary scale-x-0 group-hover:scale-x-100 transition-transform duration-200 origin-left"></span>
-                        </Link>
-                        )
-                    })}
-                 </nav>
-                 <div className="flex items-center gap-3">
-                    <ThemeToggle/>
-                    <SignInButton/>
-
-                    <Button
-                    variant="ghost"
-                    size="icon"
-                    className="md:hidden"
-                    onClick={() => setIsMenuOpen
-                        (!isMenuOpen)
-                    }>
-                        {isMenuOpen ? (
-                            <X className="h-5 w-5" />
-                        ) : (
-                            <Menu className="h-5 w-5" />
-                        )}                    </Button>
-
-
-                 </div>
-            </div>
-            </div>
-            {isMenuOpen && (
-                <div className="md:hidden border-t border-primary/10">
-                    <nav className="flex flex-col space-y-1 py-4">
+                </div>
+                {isMenuOpen && (
+                    <nav className="lg:hidden border-t border-border/60 flex flex-col gap-1 py-4">
                         {navItems.map((item) => (
                             <Link
-                            key={item.href}
-                            href={item.href}
-                            className="px-4 py-3 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-primary/5 ronded-md transition-colors"
-                            onClick={() =>setIsMenuOpen
-                                (false)
-                            }>
-                            {item.label}
+                                key={item.href}
+                                href={item.href}
+                                className="rounded-xl px-4 py-3 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground"
+                                onClick={() => setIsMenuOpen(false)}
+                            >
+                                {item.label}
                             </Link>
                         ))}
                     </nav>
-                </div>
-            )}
-        </header>
+                )}
+            </header>
         </div>
-    )
+    );
 }

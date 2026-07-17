@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Mail, User, Loader2 } from "lucide-react";
+import { Mail, User, Loader2, AlertCircle } from "lucide-react";
 import Link from "next/link";
 import { AuthLayout } from "@/components/auth/auth-layout";
 import { PasswordInput } from "@/components/auth/password-input";
@@ -37,7 +37,7 @@ export default function SignupPage(){
     return(
         <AuthLayout tagline="Start your journey. Personalized, private support whenever you need it.">
             <div className="space-y-1 mb-6">
-                <h1 className="text-2xl md:text-3xl font-extrabold bg-gradient-to-r from-primary to-primary/80 bg-clip-text text-transparent tracking-tight">
+                <h1 className="text-2xl md:text-3xl font-extrabold bg-linear-to-r from-primary to-primary/80 bg-clip-text text-transparent tracking-tight">
                     Create Your Account
                 </h1>
                 <p className="text-sm text-muted-foreground">
@@ -103,11 +103,14 @@ export default function SignupPage(){
                 </div>
 
                 {error && (
-                    <p className="text-sm text-destructive font-medium">{error}</p>
+                    <div className="flex items-center gap-2 rounded-xl bg-crisis/10 px-3.5 py-2.5 text-sm font-medium text-crisis-foreground">
+                        <AlertCircle className="h-4 w-4 shrink-0 text-crisis" />
+                        {error}
+                    </div>
                 )}
 
                 <Button
-                className="w-full h-11 rounded-xl font-semibold bg-gradient-to-r from-primary to-primary/80 shadow-md shadow-primary/20 hover:from-primary/90 hover:to-primary"
+                className="w-full h-11 rounded-xl font-semibold bg-linear-to-r from-primary to-primary/80 shadow-md shadow-primary/20 hover:from-primary/90 hover:to-primary"
                 size="lg"
                 type="submit"
                 disabled={isSubmitting}

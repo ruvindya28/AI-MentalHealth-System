@@ -7,9 +7,10 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
+  --font-sans: var(--font-inter);
   --font-mono: var(--font-geist-mono);
-  --font-heading: var(--font-sans);
+  --font-heading: var(--font-poppins);
+  --font-soft: var(--font-nunito);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -27,8 +28,25 @@
   --color-input: var(--input);
   --color-border: var(--border);
   --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
   --color-accent-foreground: var(--accent-foreground);
   --color-accent: var(--accent);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-crisis: var(--crisis);
+  --color-crisis-foreground: var(--crisis-foreground);
+  --color-emotion-calm: var(--emotion-calm);
+  --color-emotion-hopeful: var(--emotion-hopeful);
+  --color-emotion-neutral: var(--emotion-neutral);
+  --color-emotion-anxious: var(--emotion-anxious);
+  --color-emotion-sad: var(--emotion-sad);
+  --color-emotion-angry: var(--emotion-angry);
+  --color-crisis-none: var(--crisis-none);
+  --color-crisis-low: var(--crisis-low);
+  --color-crisis-medium: var(--crisis-medium);
+  --color-crisis-high: var(--crisis-high);
   --color-muted-foreground: var(--muted-foreground);
   --color-muted: var(--muted);
   --color-secondary-foreground: var(--secondary-foreground);
@@ -62,63 +80,127 @@
   0%, 100% {
     transform: translate(-50%, -50%) scale(1);}
   50% {
-    transform: translate(-50%, -50%) scale(0.9);}}}
+    transform: translate(-50%, -50%) scale(0.9);}}
+  --animate-breathe: breathe 4s ease-in-out infinite;
+  @keyframes breathe {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 0.9;
+    }
+  50% {
+    transform: scale(1.04);
+    opacity: 1;
+    }
+  }
+  --animate-fade-in-up: fade-in-up 0.6s ease-out both;
+  @keyframes fade-in-up {
+  0% {
+    opacity: 0;
+    transform: translateY(12px);
+    }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+    }
+  }
+}
 
 :root {
-  --background: #f7faf9;
-  --foreground: #2e3537;
-  --card: #f7faf9;
-  --card-foreground: #2e3537;
-  --popover: #f7faf9;
-  --popover-foreground: #2e3537;
-  --primary: #9bc9b2;
-  --primary-foreground: #2a3d29;
-  --secondary: #f3f2fa;
-  --secondary-foreground: #726b8a;
-  --muted: #f3f6fa;
-  --muted-foreground: #6e7c8a;
-  --accent: #f4f8f6;
-  --accent-foreground: #2e3537;
-  --destructive: #f25f5c;
-  --destructive-foreground: #f6fbfa;
-  --border: #e6e9eb;
-  --input: #e6e9eb;
-  --ring: #9bc9b2;
-  --radius: 0.75rem;
+  /* Warm, calm mental-health palette. All *-foreground values are dark ink,
+     never white — validated against WCAG 4.5:1 on lavender/mint/sky/success/warning. */
+  --background: #f8fafc;
+  --foreground: #2e3547;
+  --card: #ffffff;
+  --card-foreground: #2e3547;
+  --popover: #ffffff;
+  --popover-foreground: #2e3547;
+  --primary: #8b9eff;
+  --primary-foreground: #1e2233;
+  --secondary: #a8e6cf;
+  --secondary-foreground: #1e2233;
+  --muted: #f1f5f9;
+  --muted-foreground: #64748b;
+  --accent: #b5e3ff;
+  --accent-foreground: #1e2233;
+  --success: #7dd3a0;
+  --success-foreground: #1e2233;
+  --warning: #fbbf77;
+  --warning-foreground: #1e2233;
+  --crisis: #fca5a5;
+  --crisis-foreground: #1e2233;
+  --destructive: #e8827a;
+  --destructive-foreground: #1e2233;
+  --border: #e2e8f0;
+  --input: #e2e8f0;
+  --ring: #8b9eff;
+  --radius: 0.9rem;
+
+  --chart-1: #8b9eff;
+  --chart-2: #a8e6cf;
+  --chart-3: #b5e3ff;
+  --chart-4: #7dd3a0;
+  --chart-5: #fbbf77;
+
+  /* Emotion mark colors — fixed adjacency order Calm, Hopeful, Neutral,
+     Anxious, Sad, Angry (validated for colorblind separation, do not resort). */
+  --emotion-calm: #4a90d9;
+  --emotion-hopeful: #34a876;
+  --emotion-neutral: #7e85cc;
+  --emotion-anxious: #cb7f2e;
+  --emotion-sad: #6c6fd1;
+  --emotion-angry: #d9705a;
+
+  /* Crisis status ramp — intentionally distinct from emotion hues */
+  --crisis-none: #0a7a4b;
+  --crisis-low: #9c6314;
+  --crisis-medium: #a8560a;
+  --crisis-high: #b23b32;
 }
 
 .dark {
-  --background: #0a1014;
-  --foreground: #e8ecf2;
-  --card: #0a1014;
-  --card-foreground: #e8ecf2;
-  --popover: #0a1014;
-  --popover-foreground: #e8ecf2;
-  --primary: #b6e2d3;
-  --primary-foreground: #2a3d29;
-  --secondary: #23203a;
-  --secondary-foreground: #e8ecf2;
-  --muted: #162027;
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
+  --background: #12161c;
+  --foreground: #e8ecf5;
+  --card: #171c24;
+  --card-foreground: #e8ecf5;
+  --popover: #171c24;
+  --popover-foreground: #e8ecf5;
+  --primary: #a9b8ff;
+  --primary-foreground: #1e2233;
+  --secondary: #b8ecd9;
+  --secondary-foreground: #1e2233;
+  --muted: #1a1f27;
+  --muted-foreground: #94a3b8;
+  --accent: #c2e9ff;
+  --accent-foreground: #1e2233;
+  --success: #86e0ae;
+  --success-foreground: #1e2233;
+  --warning: #ffc98a;
+  --warning-foreground: #1e2233;
+  --crisis: #ffb3b3;
+  --crisis-foreground: #1e2233;
+  --destructive: #f0968c;
+  --destructive-foreground: #1e2233;
+  --border: color-mix(in oklch, white 12%, transparent);
+  --input: color-mix(in oklch, white 15%, transparent);
+  --ring: #a9b8ff;
+
+  --chart-1: #a9b8ff;
+  --chart-2: #b8ecd9;
+  --chart-3: #c2e9ff;
+  --chart-4: #86e0ae;
+  --chart-5: #ffc98a;
+
+  --emotion-calm: #6fa8e6;
+  --emotion-hopeful: #4cc290;
+  --emotion-neutral: #9a9fe0;
+  --emotion-anxious: #e0a057;
+  --emotion-sad: #8b8ee8;
+  --emotion-angry: #e88b76;
+
+  --crisis-none: #7fe8b4;
+  --crisis-low: #f2b860;
+  --crisis-medium: #f2984d;
+  --crisis-high: #f5a199;
 }
 
 @layer base {
@@ -130,5 +212,8 @@
   }
   html {
     @apply font-sans;
+  }
+  h1, h2, h3, h4 {
+    @apply font-heading;
   }
 }

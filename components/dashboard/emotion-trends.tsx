@@ -10,21 +10,12 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-import { EMOTION_COLORS, type Emotion } from "@/lib/mock-emotion-analyzer";
+import { EMOTION_COLORS, EMOTION_ORDER, type Emotion } from "@/lib/mock-emotion-analyzer";
 import type { EmotionLogEntry } from "@/lib/contexts/wellness-context";
 
 interface EmotionTrendsProps {
   entries: EmotionLogEntry[];
 }
-
-const EMOTION_ORDER: Emotion[] = [
-  "Calm",
-  "Hopeful",
-  "Neutral",
-  "Anxious",
-  "Sad",
-  "Angry",
-];
 
 export function EmotionTrends({ entries }: EmotionTrendsProps) {
   const counts = entries.reduce<Partial<Record<Emotion, number>>>(
@@ -35,12 +26,11 @@ export function EmotionTrends({ entries }: EmotionTrendsProps) {
     {}
   );
 
+  // Fixed adjacency order (not sorted by count) — keeps colorblind separation valid.
   const rows = EMOTION_ORDER.map((emotion) => ({
     emotion,
     count: counts[emotion] ?? 0,
-  }))
-    .filter((row) => row.count > 0)
-    .sort((a, b) => b.count - a.count);
+  })).filter((row) => row.count > 0);
 
   const maxCount = rows.length > 0 ? Math.max(...rows.map((r) => r.count)) : 0;
 
@@ -63,7 +53,7 @@ export function EmotionTrends({ entries }: EmotionTrendsProps) {
             <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
               <BrainCircuit className="w-5 h-5 text-primary" />
             </div>
-            <p className="text-sm text-muted-foreground max-w-[280px]">
+            <p className="text-sm text-muted-foreground max-w-70">
               Start a therapy session to see your detected emotions here.
             </p>
           </div>
@@ -72,9 +62,8 @@ export function EmotionTrends({ entries }: EmotionTrendsProps) {
             {rows.map((row) => (
               <div key={row.emotion} className="space-y-1">
                 <div className="flex items-center justify-between text-sm">
-                  <span
-                    className={cn("font-medium", EMOTION_COLORS[row.emotion].text)}
-                  >
+                  <span className="flex items-center gap-2 font-medium">
+                    <span className={cn("h-2 w-2 rounded-full", EMOTION_COLORS[row.emotion].dot)} />
                     {row.emotion}
                   </span>
                   <span className="text-muted-foreground">{row.count}</span>

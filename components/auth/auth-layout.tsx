@@ -19,11 +19,13 @@ const TRUST_POINTS = [
 export function AuthLayout({ children, tagline }: AuthLayoutProps) {
   return (
     <div className="min-h-screen w-full flex flex-col lg:flex-row pt-20">
-      <div className="hidden lg:flex lg:w-5/12 relative overflow-hidden bg-gradient-to-br from-primary/15 via-secondary/20 to-background items-center justify-center p-12">
+      <div className="hidden lg:flex lg:w-5/12 relative overflow-hidden bg-linear-to-br from-primary/15 via-secondary/20 to-background items-center justify-center p-12">
+        <div className="pointer-events-none absolute -top-16 -left-16 h-72 w-72 rounded-full bg-accent/30 blur-3xl" />
+        <div className="pointer-events-none absolute bottom-0 right-0 h-80 w-80 rounded-full bg-secondary/30 blur-3xl" />
         <Ripple className="opacity-30" />
         <div className="relative z-10 max-w-sm space-y-8">
-          <Link href="/" className="inline-flex items-center gap-2 text-2xl font-bold text-foreground hover:opacity-80 transition-opacity">
-            <AudioWaveform className="w-7 h-7 text-primary" />
+          <Link href="/" className="inline-flex items-center gap-2 text-2xl font-bold font-heading text-foreground hover:opacity-80 transition-opacity">
+            <AudioWaveform className="w-7 h-7 text-primary animate-breathe" />
             MindCare
           </Link>
           <p className="text-xl text-foreground/90 leading-relaxed font-medium">
@@ -44,7 +46,7 @@ export function AuthLayout({ children, tagline }: AuthLayoutProps) {
 
       <div className="flex-1 flex items-start lg:items-center justify-center p-6 sm:p-10 pt-10 bg-background">
         <div className="w-full max-w-md">
-          <div className="lg:hidden flex items-center gap-2 text-xl font-bold text-foreground mb-8 justify-center">
+          <div className="lg:hidden flex items-center gap-2 text-xl font-bold font-heading text-foreground mb-8 justify-center">
             <AudioWaveform className="w-6 h-6 text-primary" />
             MindCare
           </div>

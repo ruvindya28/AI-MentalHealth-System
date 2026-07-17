@@ -77,18 +77,29 @@ export function analyzeText(text: string): EmotionAnalysis {
   return { emotion: bestEmotion, confidence, crisisLevel };
 }
 
-export const EMOTION_COLORS: Record<Emotion, { text: string; bg: string; bar: string }> = {
-  Anxious: { text: "text-amber-600 dark:text-amber-400", bg: "bg-amber-500/10", bar: "bg-amber-500" },
-  Sad: { text: "text-blue-600 dark:text-blue-400", bg: "bg-blue-500/10", bar: "bg-blue-500" },
-  Angry: { text: "text-rose-600 dark:text-rose-400", bg: "bg-rose-500/10", bar: "bg-rose-500" },
-  Hopeful: { text: "text-emerald-600 dark:text-emerald-400", bg: "bg-emerald-500/10", bar: "bg-emerald-500" },
-  Calm: { text: "text-purple-600 dark:text-purple-400", bg: "bg-purple-500/10", bar: "bg-purple-500" },
-  Neutral: { text: "text-slate-600 dark:text-slate-400", bg: "bg-slate-500/10", bar: "bg-slate-500" },
+// Display order is fixed (not sorted by value) — validated for adjacent
+// colorblind separation. Keep this order wherever emotions are listed together.
+export const EMOTION_ORDER: Emotion[] = [
+  "Calm",
+  "Hopeful",
+  "Neutral",
+  "Anxious",
+  "Sad",
+  "Angry",
+];
+
+export const EMOTION_COLORS: Record<Emotion, { text: string; bg: string; border: string; bar: string; dot: string }> = {
+  Calm: { text: "text-foreground", bg: "bg-emotion-calm/10", border: "border-emotion-calm/30", bar: "bg-emotion-calm", dot: "bg-emotion-calm" },
+  Hopeful: { text: "text-foreground", bg: "bg-emotion-hopeful/10", border: "border-emotion-hopeful/30", bar: "bg-emotion-hopeful", dot: "bg-emotion-hopeful" },
+  Neutral: { text: "text-foreground", bg: "bg-emotion-neutral/10", border: "border-emotion-neutral/30", bar: "bg-emotion-neutral", dot: "bg-emotion-neutral" },
+  Anxious: { text: "text-foreground", bg: "bg-emotion-anxious/10", border: "border-emotion-anxious/30", bar: "bg-emotion-anxious", dot: "bg-emotion-anxious" },
+  Sad: { text: "text-foreground", bg: "bg-emotion-sad/10", border: "border-emotion-sad/30", bar: "bg-emotion-sad", dot: "bg-emotion-sad" },
+  Angry: { text: "text-foreground", bg: "bg-emotion-angry/10", border: "border-emotion-angry/30", bar: "bg-emotion-angry", dot: "bg-emotion-angry" },
 };
 
 export const CRISIS_COLORS: Record<CrisisLevel, { text: string; bg: string; ring: string; label: string }> = {
-  none: { text: "text-emerald-600 dark:text-emerald-400", bg: "bg-emerald-500", ring: "ring-emerald-500/30", label: "None detected" },
-  low: { text: "text-amber-600 dark:text-amber-400", bg: "bg-amber-500", ring: "ring-amber-500/30", label: "Low" },
-  medium: { text: "text-orange-600 dark:text-orange-400", bg: "bg-orange-500", ring: "ring-orange-500/30", label: "Medium" },
-  high: { text: "text-red-600 dark:text-red-400", bg: "bg-red-500", ring: "ring-red-500/30", label: "High" },
+  none: { text: "text-crisis-none", bg: "bg-crisis-none", ring: "ring-crisis-none/30", label: "None detected" },
+  low: { text: "text-crisis-low", bg: "bg-crisis-low", ring: "ring-crisis-low/30", label: "Low" },
+  medium: { text: "text-crisis-medium", bg: "bg-crisis-medium", ring: "ring-crisis-medium/30", label: "Medium" },
+  high: { text: "text-crisis-high", bg: "bg-crisis-high", ring: "ring-crisis-high/30", label: "High" },
 };

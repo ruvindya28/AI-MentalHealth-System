@@ -25,7 +25,7 @@ export default function LoginPage(){
     return(
         <AuthLayout tagline="Welcome back. Continue your journey toward a calmer mind.">
             <div className="space-y-1 mb-6">
-                <h1 className="text-2xl md:text-3xl font-extrabold bg-gradient-to-r from-primary to-primary/80 bg-clip-text text-transparent tracking-tight">
+                <h1 className="text-2xl md:text-3xl font-extrabold bg-linear-to-r from-primary to-primary/80 bg-clip-text text-transparent tracking-tight">
                     Sign In
                 </h1>
                 <p className="text-sm text-muted-foreground">
@@ -65,7 +65,7 @@ export default function LoginPage(){
                 </div>
 
                 <Button
-                className="w-full h-11 rounded-xl font-semibold bg-gradient-to-r from-primary to-primary/80 shadow-md shadow-primary/20 hover:from-primary/90 hover:to-primary"
+                className="w-full h-11 rounded-xl font-semibold bg-linear-to-r from-primary to-primary/80 shadow-md shadow-primary/20 hover:from-primary/90 hover:to-primary"
                 size="lg"
                 type="submit"
                 disabled={isSubmitting}

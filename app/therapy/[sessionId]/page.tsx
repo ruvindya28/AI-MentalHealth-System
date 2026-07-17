@@ -8,7 +8,7 @@ import {
   User,
   Loader2,
   Sparkles,
-  AlertTriangle,
+  Heart,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence, type Variants } from "framer-motion";
@@ -146,12 +146,12 @@ export default function TherapyPage() {
   return (
    <div className="relative max-w-7xl mx-auto px-4">
     <div className="flex h-[calc(100vh-4rem)] mt-20 gap-6">
-        <div className="flex-1 flex flex-col overflow-hidden bg-white dark:bg-background rounded-lg border">
+        <div className="flex-1 flex flex-col overflow-hidden bg-card rounded-2xl border shadow-sm">
             <div className="flex items-center gap-2 p-4 border-b">
                 <div className="w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center">
                 <Bot className="w-5 h-5" /></div>
                 <div>
-                  <h2 className="font-semibold">Ai Therapist</h2>
+                  <h2 className="font-semibold font-heading">AI Therapist</h2>
                   <p className="text-sm text-muted-foreground">{messages.length} messages</p>
                 </div>
             </div>
@@ -160,17 +160,19 @@ export default function TherapyPage() {
               <motion.div
                 initial={{ opacity: 0, height: 0 }}
                 animate={{ opacity: 1, height: "auto" }}
-                className="mx-4 mt-4 p-4 rounded-xl border border-red-500/30 bg-red-500/10 flex items-start gap-3"
+                className="mx-4 mt-4 p-4 rounded-2xl border border-crisis/30 bg-crisis/10 flex items-start gap-3"
               >
-                <AlertTriangle className="w-5 h-5 text-red-600 dark:text-red-400 shrink-0 mt-0.5" />
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-crisis/20">
+                  <Heart className="w-4 h-4 text-crisis-foreground dark:text-crisis" />
+                </div>
                 <div className="space-y-1">
-                  <p className="text-sm font-semibold text-red-700 dark:text-red-400">
-                    We noticed signs of distress
+                  <p className="text-sm font-semibold text-crisis-foreground dark:text-crisis">
+                    We hear that things feel heavy right now
                   </p>
-                  <p className="text-sm text-red-700/90 dark:text-red-400/90">
-                    You&apos;re not alone. If you&apos;re in immediate danger, please
-                    contact your local emergency number or a crisis helpline right
-                    now.
+                  <p className="text-sm text-foreground/80">
+                    You&apos;re not alone in this. If you&apos;re in immediate danger,
+                    please reach out to your local emergency number or a crisis
+                    helpline — support is available right now.
                   </p>
                 </div>
               </motion.div>
@@ -200,7 +202,7 @@ export default function TherapyPage() {
                           <Sparkles className="w-6 h-6" />
                         </motion.div>
                       </div>
-                      <span className="bg-gradient-to-r from-primary/90 to-primary bg-clip-text text-transparent">
+                      <span className="font-heading bg-linear-to-r from-primary/90 to-primary bg-clip-text text-transparent">
                         AI Therapist
                       </span>
                     </div>
@@ -267,13 +269,14 @@ export default function TherapyPage() {
                             )}
                             {msg.metadata?.emotion && (
                               <Badge
-                                variant="secondary"
+                                variant="outline"
                                 className={cn(
-                                  "text-xs",
+                                  "text-xs border",
                                   EMOTION_COLORS[msg.metadata.emotion].bg,
-                                  EMOTION_COLORS[msg.metadata.emotion].text
+                                  EMOTION_COLORS[msg.metadata.emotion].border
                                 )}
                               >
+                                <span className={cn("h-1.5 w-1.5 rounded-full", EMOTION_COLORS[msg.metadata.emotion].dot)} />
                                 {msg.metadata.emotion} · {msg.metadata.confidence}%
                               </Badge>
                             )}
@@ -305,7 +308,15 @@ export default function TherapyPage() {
                     </div>
                     <div className="flex-1 space-y-2">
                       <p className="font-medium text-sm">AI Therapist</p>
-                      <p className="text-sm text-muted-foreground">Typing...</p>
+                      <div className="flex items-center gap-1 py-1" aria-label="AI Therapist is typing">
+                        {[0, 1, 2].map((i) => (
+                          <span
+                            key={i}
+                            className="h-1.5 w-1.5 rounded-full bg-primary/60 animate-bounce"
+                            style={{ animationDelay: `${i * 0.15}s` }}
+                          />
+                        ))}
+                      </div>
                     </div>
                   </motion.div>
                 )}
@@ -315,7 +326,7 @@ export default function TherapyPage() {
           )}
 
                  {/* Input area */}
-          <div className="border-t bg-background/50 backdrop-blur supports-[backdrop-filter]:bg-background/50 p-4">
+          <div className="border-t bg-background/50 backdrop-blur supports-backdrop-filter:bg-background/50 p-4">
             <form
               onSubmit={handleSubmit}
               className="max-w-3xl mx-auto flex gap-4 items-end relative"
@@ -331,7 +342,7 @@ export default function TherapyPage() {
                   }
                   className={cn(
                     "w-full resize-none rounded-2xl border bg-background",
-                    "p-3 pr-12 min-h-[48px] max-h-[200px]",
+                    "p-3 pr-12 min-h-12 max-h-50",
                     "focus:outline-none focus:ring-2 focus:ring-primary/50",
                     "transition-all duration-200",
                     "placeholder:text-muted-foreground/70",
@@ -351,7 +362,7 @@ export default function TherapyPage() {
                   type="submit"
                   size="icon"
                   className={cn(
-                    "absolute right-1.5 bottom-3.5 h-[36px] w-[36px]",
+                    "absolute right-1.5 bottom-3.5 h-9 w-9",
                     "rounded-xl transition-all duration-200",
                     "bg-primary hover:bg-primary/90",
                     "shadow-sm shadow-primary/20",

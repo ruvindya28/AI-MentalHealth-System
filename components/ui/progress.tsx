@@ -13,10 +13,10 @@ export function Progress({
 }: ProgressProps) {
   return (
     <div
-      className={`relative h-2 w-full overflow-hidden rounded-full bg-slate-200 dark:bg-slate-800 ${className}`}
+      className={`relative h-2 w-full overflow-hidden rounded-full bg-muted ${className}`}
     >
       <div
-        className="h-full bg-primary transition-all duration-300 ease-in-out"
+        className="h-full rounded-full bg-primary transition-all duration-300 ease-in-out"
         style={{
           width: `${Math.min(Math.max(value, 0), 100)}%`,
         }}

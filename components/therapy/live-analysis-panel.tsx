@@ -53,12 +53,8 @@ export function LiveAnalysisPanel({
           </p>
           {latestEmotion ? (
             <div className="flex items-center justify-between">
-              <span
-                className={cn(
-                  "text-lg font-semibold",
-                  EMOTION_COLORS[latestEmotion].text
-                )}
-              >
+              <span className="flex items-center gap-2 text-lg font-semibold font-heading">
+                <span className={cn("h-2.5 w-2.5 rounded-full", EMOTION_COLORS[latestEmotion].dot)} />
                 {latestEmotion}
               </span>
               <span className="text-sm text-muted-foreground">

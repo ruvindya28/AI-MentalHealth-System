@@ -84,7 +84,7 @@ const handleReset = () => {
 
 
 return(
-    <div className="flex flex-col items-center justify-center h-[400px] space-y-8">
+    <div className="flex flex-col items-center justify-center h-100 space-y-8">
         <AnimatePresence mode="wait">
             <motion.div
             key={phase}

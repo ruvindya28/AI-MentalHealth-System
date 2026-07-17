@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { motion } from "framer-motion";
 import { Mic, MicOff, Phone, PhoneOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -13,6 +12,7 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import { VoiceOrb, type VoiceOrbState } from "@/components/voice/voice-orb";
 
 const MOODS = ["Calm", "Reflective", "Hopeful", "Content", "Anxious"];
 
@@ -38,6 +38,7 @@ export function VoiceSessionCard({ onCallEnd }: VoiceSessionCardProps) {
   const [isMuted, setIsMuted] = useState(false);
   const [elapsed, setElapsed] = useState(0);
   const [startedAt, setStartedAt] = useState<Date | null>(null);
+  const [voicingPhase, setVoicingPhase] = useState<"listening" | "speaking">("listening");
 
   useEffect(() => {
     if (!isActive) return;
@@ -47,10 +48,23 @@ export function VoiceSessionCard({ onCallEnd }: VoiceSessionCardProps) {
     return () => clearInterval(timer);
   }, [isActive]);
 
+  useEffect(() => {
+    if (!isActive || isMuted) return;
+    // No real audio pipeline yet — alternate listening/speaking to preview
+    // both voice-orb states while a mock call is "active".
+    const timer = setInterval(() => {
+      setVoicingPhase((prev) => (prev === "listening" ? "speaking" : "listening"));
+    }, 3500);
+    return () => clearInterval(timer);
+  }, [isActive, isMuted]);
+
+  const orbState: VoiceOrbState = !isActive || isMuted ? "idle" : voicingPhase;
+
   const handleStart = () => {
     setStartedAt(new Date());
     setElapsed(0);
     setIsMuted(false);
+    setVoicingPhase("listening");
     setIsActive(true);
   };
 
@@ -76,47 +90,30 @@ export function VoiceSessionCard({ onCallEnd }: VoiceSessionCardProps) {
         <CardDescription>Talk it out with your AI therapist</CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col items-center justify-center gap-6 py-6">
-        <div className="relative w-28 h-28 flex items-center justify-center">
-          {isActive && (
-            <>
-              <motion.div
-                className="absolute inset-0 rounded-full bg-primary/20"
-                animate={{ scale: [1, 1.35, 1], opacity: [0.6, 0, 0.6] }}
-                transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
-              />
-              <motion.div
-                className="absolute inset-2 rounded-full bg-primary/20"
-                animate={{ scale: [1, 1.2, 1], opacity: [0.5, 0, 0.5] }}
-                transition={{
-                  duration: 2,
-                  repeat: Infinity,
-                  ease: "easeInOut",
-                  delay: 0.3,
-                }}
-              />
-            </>
-          )}
+        <VoiceOrb state={orbState} size={128}>
           <button
             type="button"
             onClick={isActive ? undefined : handleStart}
             disabled={isActive}
             className={cn(
-              "relative z-10 w-20 h-20 rounded-full flex items-center justify-center transition-all duration-300",
-              "bg-gradient-to-r from-primary via-primary/90 to-secondary shadow-lg shadow-primary/30",
+              "flex h-full w-full items-center justify-center rounded-full transition-transform duration-300",
               !isActive && "hover:scale-105 cursor-pointer"
             )}
           >
             {isActive ? (
-              <Phone className="w-7 h-7 text-white" />
+              <Phone className="w-7 h-7 text-primary-foreground" />
             ) : (
-              <Mic className="w-7 h-7 text-white" />
+              <Mic className="w-7 h-7 text-primary-foreground" />
             )}
           </button>
-        </div>
+        </VoiceOrb>
 
         {isActive ? (
           <div className="flex flex-col items-center gap-4">
-            <span className="text-2xl font-semibold tabular-nums">
+            <span className="text-xs font-medium text-muted-foreground">
+              {isMuted ? "Muted" : orbState === "speaking" ? "Speaking…" : "Listening…"}
+            </span>
+            <span className="text-2xl font-semibold font-heading tabular-nums">
               {formatDuration(elapsed)}
             </span>
             <div className="flex items-center gap-3">

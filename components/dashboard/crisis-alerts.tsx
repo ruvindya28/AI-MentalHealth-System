@@ -29,10 +29,10 @@ export function CrisisAlerts({ entries }: CrisisAlertsProps) {
       <CardContent>
         {flagged.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-8 text-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-emerald-500/10 flex items-center justify-center">
-              <ShieldCheck className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+            <div className="w-10 h-10 rounded-full bg-success/10 flex items-center justify-center">
+              <ShieldCheck className="w-5 h-5 text-success" />
             </div>
-            <p className="text-sm text-muted-foreground max-w-[220px]">
+            <p className="text-sm text-muted-foreground max-w-55">
               No crisis signals detected. We&apos;ll flag anything concerning
               here.
             </p>
@@ -42,7 +42,7 @@ export function CrisisAlerts({ entries }: CrisisAlertsProps) {
             {flagged.map((entry) => (
               <div
                 key={entry.id}
-                className="flex items-center justify-between p-3 rounded-lg bg-muted/30"
+                className="flex items-center justify-between p-3 rounded-xl bg-muted/30"
               >
                 <div className="flex items-center gap-3">
                   <AlertTriangle

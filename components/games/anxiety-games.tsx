@@ -17,8 +17,8 @@ const games = [
     title: "Breathing Patterns",
     description: "Follow calming breathing exercises with visual guidance",
     icon: Wind,
-    color: "text-blue-500",
-    bgColor: "bg-blue-500/10",
+    color: "text-primary",
+    bgColor: "bg-primary/10",
     duration: "5 mins",
   },
   {
@@ -26,8 +26,8 @@ const games = [
     title: "Zen Garden",
     description: "Create a peaceful virtual garden and practice mindfulness",
     icon: Flower2,
-    color: "text-pink-500",
-    bgColor: "bg-pink-500/10",
+    color: "text-secondary-foreground",
+    bgColor: "bg-secondary/20",
     duration: "10 mins",
   },
   {
@@ -35,8 +35,8 @@ const games = [
     title: "Forest Journey",
     description: "Take a relaxing walk through a tranquil forest environment",
     icon: TreePine,
-    color: "text-green-500",
-    bgColor: "bg-green-500/10",
+    color: "text-success",
+    bgColor: "bg-success/10",
     duration: "15 mins",
   },
   {
@@ -44,8 +44,8 @@ const games = [
     title: "Ocean Waves",
     description: "Match your breath with gentle ocean waves",
     icon: Waves,
-    color: "text-cyan-500",
-    bgColor: "bg-cyan-500/10",
+    color: "text-accent-foreground",
+    bgColor: "bg-accent/20",
     duration: "8 mins",
   },
 ];
@@ -144,7 +144,7 @@ export const AnxietyGames = ({onGamePlayed}: AnxietyGamesProps) => {
             </CardContent>
             </Card>
             <Dialog open={showGame} onOpenChange={setShowGame}>
-                <DialogContent className="sm:max-w-[600px]">
+                <DialogContent className="sm:max-w-150">
                     <DialogHeader>
                         <DialogTitle>{games.find((g) => g.id === selectedGame)?.title}</DialogTitle>
                     </DialogHeader>
