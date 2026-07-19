@@ -4,22 +4,46 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Mail, Loader2 } from "lucide-react";
+import { Mail, Loader2, AlertCircle } from "lucide-react";
 import Link from "next/link";
 import { AuthLayout } from "@/components/auth/auth-layout";
 import { PasswordInput } from "@/components/auth/password-input";
+import { useAuth } from "@/lib/contexts/auth-context";
 
 export default function LoginPage(){
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
+    const [error, setError] = useState("");
     const [isSubmitting, setIsSubmitting] = useState(false);
     const router = useRouter();
+    const { setUser } = useAuth();
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        setError("");
         setIsSubmitting(true);
-        // No auth backend yet — this simulates a successful sign-in for now.
-        router.push("/dashboard");
+
+        try {
+            const res = await fetch("/api/auth/login", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ email, password }),
+            });
+            const data = await res.json();
+
+            if (!res.ok) {
+                setError(data.error ?? "Something went wrong. Please try again.");
+                setIsSubmitting(false);
+                return;
+            }
+
+            setUser(data.user);
+            router.push("/dashboard");
+            router.refresh();
+        } catch {
+            setError("Couldn't reach the server. Please try again.");
+            setIsSubmitting(false);
+        }
     };
 
     return(
@@ -63,6 +87,13 @@ export default function LoginPage(){
                     </div>
                     <PasswordInput id="password" value={password} onChange={setPassword} />
                 </div>
+
+                {error && (
+                    <div className="flex items-center gap-2 rounded-xl border border-crisis/30 bg-crisis/10 px-3.5 py-2.5 text-sm font-medium text-crisis-foreground dark:text-crisis">
+                        <AlertCircle className="h-4 w-4 shrink-0 text-crisis-foreground dark:text-crisis" />
+                        {error}
+                    </div>
+                )}
 
                 <Button
                 className="w-full h-11 rounded-xl font-semibold bg-linear-to-r from-primary to-primary/80 shadow-md shadow-primary/20 hover:from-primary/90 hover:to-primary"

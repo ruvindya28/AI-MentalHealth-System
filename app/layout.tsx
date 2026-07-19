@@ -4,6 +4,7 @@ import "./globals.css";
 import Header from "@/components/header";
 import { Providers } from "@/components/provider";
 import { Footer } from "@/components/footer";
+import { getCurrentUser } from "@/lib/auth/current-user";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -34,11 +35,13 @@ export const metadata: Metadata = {
     "A calm, supportive space for therapy conversations, mood tracking, and emotional wellness — powered by AI emotion and crisis detection.",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const initialUser = await getCurrentUser();
+
   return (
     <html
       lang="en"
@@ -46,7 +49,7 @@ export default function RootLayout({
       suppressHydrationWarning
     >
       <body className="antialiased">
-        <Providers>
+        <Providers initialUser={initialUser}>
           <Header />
           {children}
           <Footer />

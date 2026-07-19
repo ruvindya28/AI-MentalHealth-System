@@ -8,6 +8,7 @@ import { Mail, User, Loader2, AlertCircle } from "lucide-react";
 import Link from "next/link";
 import { AuthLayout } from "@/components/auth/auth-layout";
 import { PasswordInput } from "@/components/auth/password-input";
+import { useAuth } from "@/lib/contexts/auth-context";
 
 export default function SignupPage(){
     const [name, setName] = useState("");
@@ -17,8 +18,9 @@ export default function SignupPage(){
     const [error, setError] = useState("");
     const [isSubmitting, setIsSubmitting] = useState(false);
     const router = useRouter();
+    const { setUser } = useAuth();
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (password.length < 8) {
             setError("Password must be at least 8 characters");
@@ -30,8 +32,28 @@ export default function SignupPage(){
         }
         setError("");
         setIsSubmitting(true);
-        // No auth backend yet — this simulates a successful sign-up for now.
-        router.push("/dashboard");
+
+        try {
+            const res = await fetch("/api/auth/signup", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ name, email, password }),
+            });
+            const data = await res.json();
+
+            if (!res.ok) {
+                setError(data.error ?? "Something went wrong. Please try again.");
+                setIsSubmitting(false);
+                return;
+            }
+
+            setUser(data.user);
+            router.push("/dashboard");
+            router.refresh();
+        } catch {
+            setError("Couldn't reach the server. Please try again.");
+            setIsSubmitting(false);
+        }
     };
 
     return(
@@ -103,8 +125,8 @@ export default function SignupPage(){
                 </div>
 
                 {error && (
-                    <div className="flex items-center gap-2 rounded-xl bg-crisis/10 px-3.5 py-2.5 text-sm font-medium text-crisis-foreground">
-                        <AlertCircle className="h-4 w-4 shrink-0 text-crisis" />
+                    <div className="flex items-center gap-2 rounded-xl border border-crisis/30 bg-crisis/10 px-3.5 py-2.5 text-sm font-medium text-crisis-foreground dark:text-crisis">
+                        <AlertCircle className="h-4 w-4 shrink-0 text-crisis-foreground dark:text-crisis" />
                         {error}
                     </div>
                 )}
