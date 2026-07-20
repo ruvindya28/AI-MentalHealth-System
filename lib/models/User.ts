@@ -13,6 +13,8 @@ const userSchema = new Schema(
         },
         passwordHash: { type: String, required: true, select: false },
         timezone: { type: String, default: "UTC" },
+        resetPasswordTokenHash: { type: String, select: false },
+        resetPasswordExpires: { type: Date, select: false },
     },
     { timestamps: true }
 );

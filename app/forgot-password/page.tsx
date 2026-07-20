@@ -13,17 +13,27 @@ export default function ForgotPasswordPage() {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isSent, setIsSent] = useState(false);
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setIsSubmitting(true);
-        // No auth backend yet — this simulates sending a reset email.
-        setTimeout(() => {
-            setIsSubmitting(false);
+
+        try {
+            await fetch("/api/auth/forgot-password", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ email }),
+            });
+            // Always shown as success, even if the email doesn't exist —
+            // the API response is intentionally the same either way.
             setIsSent(true);
             toast.success("Reset link sent", {
                 description: `Check ${email} for instructions.`,
             });
-        }, 700);
+        } catch {
+            toast.error("Couldn't reach the server. Please try again.");
+        } finally {
+            setIsSubmitting(false);
+        }
     };
 
     return (
