@@ -28,7 +28,10 @@ export function SignInButton({ className }: SignInButtonProps) {
     const handleLogout = async () => {
         setIsLoggingOut(true);
         try {
-            await fetch("/api/auth/logout", { method: "POST" });
+            const res = await fetch("/api/auth/logout", { method: "POST" });
+            if (!res.ok) {
+                throw new Error("Logout request failed");
+            }
             setUser(null);
             router.push("/login");
             router.refresh();
