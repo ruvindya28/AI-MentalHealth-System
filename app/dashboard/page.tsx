@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { BrainCircuit, Heart, MessageCircle, Sparkles, Brain, Trophy, Activity, FileText, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { format } from "date-fns";
+import { format, isSameDay } from "date-fns";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
@@ -46,6 +46,32 @@ export default function DashboardPage() {
         }, 1000);
 
         return () => clearInterval(timer);
+    }, []);
+
+    const fetchTodayMoodScore = async () => {
+        try {
+            const res = await fetch("/api/mood", { cache: "no-store" });
+            if (!res.ok) return;
+            const { entries } = (await res.json()) as {
+                entries: { moodScore: number; createdAt: string }[];
+            };
+            const todayEntries = entries.filter((entry) =>
+                isSameDay(new Date(entry.createdAt), new Date())
+            );
+            if (todayEntries.length === 0) return;
+            const average = Math.round(
+                todayEntries.reduce((sum, entry) => sum + entry.moodScore, 0) / todayEntries.length
+            );
+            setTodayMoodScore(average);
+        } catch (error) {
+            console.error("Error loading today's mood:", error);
+        }
+    };
+
+    useEffect(() => {
+        // Initial data fetch from the server, not a derivable value.
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        fetchTodayMoodScore();
     }, []);
 
     const completionRate = 100;
@@ -93,11 +119,18 @@ export default function DashboardPage() {
     const handleMoodSubmit = async (data: { moodScore: number }) => {
         setIsSavingMood(true);
         try {
-            setTodayMoodScore(data.moodScore);
+            const res = await fetch("/api/mood", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(data),
+            });
+            if (!res.ok) throw new Error("Failed to save mood");
+            await fetchTodayMoodScore();
             setShowMoodModal(false);
             toast.success("Mood saved", { description: "Thanks for checking in with yourself today." });
         } catch (error) {
             console.error("Error saving mood:", error);
+            toast.error("Couldn't save your mood. Please try again.");
         } finally {
             setIsSavingMood(false);
         }
