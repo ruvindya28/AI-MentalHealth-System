@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { format } from "date-fns";
 import { Download, FileText, TrendingUp, Sparkles, MessageSquareText } from "lucide-react";
@@ -9,8 +9,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-import { useWellness } from "@/lib/contexts/wellness-context";
-import { EMOTION_COLORS } from "@/lib/mock-emotion-analyzer";
+import type { EmotionLogEntry } from "@/lib/contexts/wellness-context";
+import { EMOTION_COLORS, type Emotion, type CrisisLevel } from "@/lib/mock-emotion-analyzer";
 import {
   getEmotionDistribution,
   getTrend,
@@ -21,13 +21,54 @@ import { EmotionDistributionBars } from "@/components/charts/emotion-distributio
 import { TrendSparkline } from "@/components/charts/trend-sparkline";
 import { toast } from "sonner";
 
-export default function ReportsPage() {
-  const { emotionLog } = useWellness();
+interface RawMessage {
+  role: "user" | "assistant";
+  timestamp: string;
+  emotion?: Emotion;
+  confidence?: number;
+  crisisLevel?: CrisisLevel;
+}
 
-  const distribution = useMemo(() => getEmotionDistribution(emotionLog), [emotionLog]);
-  const trend = useMemo(() => getTrend(emotionLog), [emotionLog]);
-  const sessions = useMemo(() => getSessionSummaries(emotionLog), [emotionLog]);
-  const insights = useMemo(() => getWellnessInsights(emotionLog), [emotionLog]);
+interface RawSession {
+  _id: string;
+  messages: RawMessage[];
+}
+
+export default function ReportsPage() {
+  const [entries, setEntries] = useState<EmotionLogEntry[]>([]);
+
+  const fetchEntries = async () => {
+    try {
+      const res = await fetch("/api/therapy", { cache: "no-store" });
+      if (!res.ok) return;
+      const { sessions } = (await res.json()) as { sessions: RawSession[] };
+      const flattened: EmotionLogEntry[] = sessions.flatMap((session) =>
+        session.messages
+          .filter((m): m is RawMessage & { emotion: Emotion } => m.role === "user" && !!m.emotion)
+          .map((m, i) => ({
+            id: `${session._id}-${i}`,
+            timestamp: new Date(m.timestamp),
+            emotion: m.emotion,
+            confidence: m.confidence ?? 0,
+            crisisLevel: m.crisisLevel ?? "none",
+          }))
+      );
+      setEntries(flattened);
+    } catch (error) {
+      console.error("Error loading report data:", error);
+    }
+  };
+
+  useEffect(() => {
+    // Initial data fetch from the server, not a derivable value.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    fetchEntries();
+  }, []);
+
+  const distribution = useMemo(() => getEmotionDistribution(entries), [entries]);
+  const trend = useMemo(() => getTrend(entries), [entries]);
+  const sessions = useMemo(() => getSessionSummaries(entries), [entries]);
+  const insights = useMemo(() => getWellnessInsights(entries), [entries]);
 
   const handleDownload = () => {
     const lines = [

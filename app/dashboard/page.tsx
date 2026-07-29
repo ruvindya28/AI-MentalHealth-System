@@ -31,6 +31,7 @@ export default function DashboardPage() {
     const [todayMoodScore, setTodayMoodScore] = useState<number | null>(null);
     const [callHistory, setCallHistory] = useState<CallRecord[]>([]);
     const [activityCount, setActivityCount] = useState(0);
+    const [chatSessionCount, setChatSessionCount] = useState(0);
 
     const { emotionLog } = useWellness();
 
@@ -80,11 +81,23 @@ export default function DashboardPage() {
         }
     };
 
+    const fetchChatSessionCount = async () => {
+        try {
+            const res = await fetch("/api/therapy", { cache: "no-store" });
+            if (!res.ok) return;
+            const { sessions } = (await res.json()) as { sessions: unknown[] };
+            setChatSessionCount(sessions.length);
+        } catch (error) {
+            console.error("Error loading therapy sessions:", error);
+        }
+    };
+
     useEffect(() => {
         // Initial data fetch from the server, not a derivable value.
         // eslint-disable-next-line react-hooks/set-state-in-effect
         fetchTodayMoodScore();
         fetchActivityCount();
+        fetchChatSessionCount();
     }, []);
 
     const completionRate = 100;
@@ -93,6 +106,8 @@ export default function DashboardPage() {
         () => computeWellnessScore({ moodScore: todayMoodScore, emotionLog, completionRate }),
         [todayMoodScore, emotionLog, completionRate]
     );
+
+    const totalSessions = chatSessionCount + callHistory.length;
 
     const wellnessStats = [
         {
@@ -113,7 +128,7 @@ export default function DashboardPage() {
         },
         {
             title: "Therapy Sessions",
-            value: `${callHistory.length} session${callHistory.length === 1 ? "" : "s"}`,
+            value: `${totalSessions} session${totalSessions === 1 ? "" : "s"}`,
             icon: Heart,
             color: "text-accent-foreground",
             bgColor: "bg-accent/20",
