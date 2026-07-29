@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { format, isSameDay } from "date-fns";
 import { Search, MessageCircle, Phone, AlertTriangle, History as HistoryIcon } from "lucide-react";
@@ -16,14 +16,112 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
-import { EMOTION_COLORS, EMOTION_ORDER, CRISIS_COLORS } from "@/lib/mock-emotion-analyzer";
-import { getMockConversationHistory, type SessionType } from "@/lib/mock-conversation-history";
+import {
+  EMOTION_COLORS,
+  EMOTION_ORDER,
+  CRISIS_COLORS,
+  type Emotion,
+  type CrisisLevel,
+} from "@/lib/mock-emotion-analyzer";
+
+type SessionType = "chat" | "voice";
+
+interface ConversationSession {
+  id: string;
+  date: Date;
+  type: SessionType;
+  durationMinutes: number;
+  messageCount: number;
+  dominantEmotion: Emotion;
+  crisisLevel: CrisisLevel;
+  title: string;
+}
+
+interface RawMessage {
+  role: "user" | "assistant";
+  content: string;
+  timestamp: string;
+  emotion?: Emotion;
+  crisisLevel?: CrisisLevel;
+}
+
+interface RawSession {
+  _id: string;
+  type: SessionType;
+  messages: RawMessage[];
+  createdAt: string;
+}
+
+const CRISIS_SEVERITY: Record<CrisisLevel, number> = { none: 0, low: 1, medium: 2, high: 3 };
+
+function summarizeSession(session: RawSession): ConversationSession {
+  const { messages } = session;
+
+  const emotionCounts = messages.reduce<Partial<Record<Emotion, number>>>((acc, m) => {
+    if (m.emotion) acc[m.emotion] = (acc[m.emotion] ?? 0) + 1;
+    return acc;
+  }, {});
+  const dominantEmotion =
+    (Object.entries(emotionCounts) as [Emotion, number][]).reduce<[Emotion, number] | null>(
+      (best, entry) => (!best || entry[1] > best[1] ? entry : best),
+      null
+    )?.[0] ?? "Neutral";
+
+  const crisisLevel = messages.reduce<CrisisLevel>((worst, m) => {
+    if (m.crisisLevel && CRISIS_SEVERITY[m.crisisLevel] > CRISIS_SEVERITY[worst]) {
+      return m.crisisLevel;
+    }
+    return worst;
+  }, "none");
+
+  const first = messages[0] ? new Date(messages[0].timestamp) : new Date(session.createdAt);
+  const last = messages.length > 0 ? new Date(messages[messages.length - 1].timestamp) : first;
+  const durationMinutes = Math.max(1, Math.round((last.getTime() - first.getTime()) / 60000));
+
+  const firstUserMessage = messages.find((m) => m.role === "user")?.content;
+  const title = firstUserMessage
+    ? firstUserMessage.length > 60
+      ? `${firstUserMessage.slice(0, 60)}…`
+      : firstUserMessage
+    : "Chat session";
+
+  return {
+    id: session._id,
+    date: new Date(session.createdAt),
+    type: session.type,
+    durationMinutes,
+    messageCount: messages.length,
+    dominantEmotion,
+    crisisLevel,
+    title,
+  };
+}
 
 export default function HistoryPage() {
-  const allSessions = useMemo(() => getMockConversationHistory(), []);
+  const [allSessions, setAllSessions] = useState<ConversationSession[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [query, setQuery] = useState("");
   const [emotionFilter, setEmotionFilter] = useState<string>("all");
   const [typeFilter, setTypeFilter] = useState<string>("all");
+
+  const fetchSessions = async () => {
+    try {
+      const res = await fetch("/api/therapy", { cache: "no-store" });
+      if (!res.ok) return;
+      const { sessions } = (await res.json()) as { sessions: RawSession[] };
+      setAllSessions(sessions.map(summarizeSession));
+    } catch (error) {
+      console.error("Error loading session history:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    // Initial data fetch from the server, not a derivable value.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    fetchSessions();
+  }, []);
 
   const filtered = allSessions.filter((session) => {
     if (query && !session.title.toLowerCase().includes(query.toLowerCase())) return false;
@@ -94,7 +192,11 @@ export default function HistoryPage() {
                 <HistoryIcon className="w-6 h-6 text-primary" />
               </div>
               <p className="text-sm text-muted-foreground max-w-70">
-                No sessions match your filters. Try adjusting your search.
+                {isLoading
+                  ? "Loading your sessions..."
+                  : allSessions.length === 0
+                    ? "No sessions yet. Start a therapy chat to see it here."
+                    : "No sessions match your filters. Try adjusting your search."}
               </p>
             </CardContent>
           </Card>
