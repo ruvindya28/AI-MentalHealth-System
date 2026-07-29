@@ -64,6 +64,7 @@ export default function TherapyPage() {
   const [latestEmotion, setLatestEmotion] = useState<Emotion | null>(null);
   const [latestConfidence, setLatestConfidence] = useState<number | null>(null);
   const [crisisLevel, setCrisisLevel] = useState<CrisisLevel>("none");
+  const [persistedSessionId, setPersistedSessionId] = useState<string | null>(null);
 
   const { addEmotionEntry } = useWellness();
 
@@ -94,7 +95,47 @@ export default function TherapyPage() {
     {}
   );
 
-  const sendMessage = (text: string) => {
+  const persistMessage = async (
+    sessionId: string,
+    msg: {
+      role: "user" | "assistant";
+      content: string;
+      emotion?: Emotion;
+      confidence?: number;
+      crisisLevel?: CrisisLevel;
+      technique?: string;
+    }
+  ) => {
+    try {
+      await fetch(`/api/therapy/${sessionId}/messages`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(msg),
+      });
+    } catch (error) {
+      console.error("Error saving message:", error);
+    }
+  };
+
+  const ensureSession = async (): Promise<string | null> => {
+    if (persistedSessionId) return persistedSessionId;
+    try {
+      const res = await fetch("/api/therapy", { method: "POST" });
+      if (!res.ok) throw new Error("Failed to create session");
+      const { session } = (await res.json()) as { session: { _id: string } };
+      setPersistedSessionId(session._id);
+      // Cosmetic URL update only — router.replace() to a new dynamic segment
+      // remounts this page and wipes in-progress chat state, so this bypasses
+      // the Next.js router entirely.
+      window.history.replaceState(null, "", `/therapy/${session._id}`);
+      return session._id;
+    } catch (error) {
+      console.error("Error creating therapy session:", error);
+      return null;
+    }
+  };
+
+  const sendMessage = async (text: string) => {
     const trimmed = text.trim();
     if (!trimmed || isTyping || isChatPaused) return;
 
@@ -123,6 +164,17 @@ export default function TherapyPage() {
     setMessage("");
     setIsTyping(true);
 
+    const sessionId = await ensureSession();
+    if (sessionId) {
+      persistMessage(sessionId, {
+        role: "user",
+        content: trimmed,
+        emotion: analysis.emotion,
+        confidence: analysis.confidence,
+        crisisLevel: analysis.crisisLevel,
+      });
+    }
+
     setTimeout(() => {
       const reply = generateReply(analysis);
       setMessages((prev) => [
@@ -135,6 +187,14 @@ export default function TherapyPage() {
         },
       ]);
       setIsTyping(false);
+
+      if (sessionId) {
+        persistMessage(sessionId, {
+          role: "assistant",
+          content: reply.text,
+          technique: reply.technique,
+        });
+      }
     }, 900);
   };
 
