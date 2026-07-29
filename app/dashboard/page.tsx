@@ -30,6 +30,7 @@ export default function DashboardPage() {
     const [showActivityLogger, setShowActivityLogger] = useState(false);
     const [todayMoodScore, setTodayMoodScore] = useState<number | null>(null);
     const [callHistory, setCallHistory] = useState<CallRecord[]>([]);
+    const [activityCount, setActivityCount] = useState(0);
 
     const { emotionLog } = useWellness();
 
@@ -68,10 +69,22 @@ export default function DashboardPage() {
         }
     };
 
+    const fetchActivityCount = async () => {
+        try {
+            const res = await fetch("/api/activities", { cache: "no-store" });
+            if (!res.ok) return;
+            const { activities } = (await res.json()) as { activities: unknown[] };
+            setActivityCount(activities.length);
+        } catch (error) {
+            console.error("Error loading activities:", error);
+        }
+    };
+
     useEffect(() => {
         // Initial data fetch from the server, not a derivable value.
         // eslint-disable-next-line react-hooks/set-state-in-effect
         fetchTodayMoodScore();
+        fetchActivityCount();
     }, []);
 
     const completionRate = 100;
@@ -108,7 +121,7 @@ export default function DashboardPage() {
         },
         {
             title: "Total Activities",
-            value: `${emotionLog.length}`,
+            value: `${activityCount}`,
             icon: Activity,
             color: "text-success",
             bgColor: "bg-success/10",
@@ -330,7 +343,7 @@ export default function DashboardPage() {
             </Dialog>
 
             <ActivityLogger
-                open={showActivityLogger} onOpenChange={setShowActivityLogger} />
+                open={showActivityLogger} onOpenChange={setShowActivityLogger} onLogged={fetchActivityCount} />
 
         </div>
     );

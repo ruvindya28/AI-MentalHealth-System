@@ -33,11 +33,13 @@ const activityTypes = [
 interface ActivityLoggerProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onLogged?: () => void;
 }
 
 export function ActivityLogger({
   open,
   onOpenChange,
+  onLogged,
 }: ActivityLoggerProps) {
 
     const [isLoading, setIsLoading] = useState(false);
@@ -50,12 +52,28 @@ export function ActivityLogger({
     e.preventDefault();
     setIsLoading(true);
     try {
+      const res = await fetch("/api/activities", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          type,
+          name,
+          durationMinutes: duration ? Number(duration) : undefined,
+          description: description || undefined,
+        }),
+      });
+      if (!res.ok) throw new Error("Failed to save activity");
+
       toast.success("Activity logged", { description: `${name} added to your check-ins.` });
       setType("");
       setName("");
       setDuration("");
       setDescription("");
       onOpenChange(false);
+      onLogged?.();
+    } catch (error) {
+      console.error("Error logging activity:", error);
+      toast.error("Couldn't log your activity. Please try again.");
     } finally {
       setIsLoading(false);
     }
