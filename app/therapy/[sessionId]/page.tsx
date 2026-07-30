@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react";
+import { useParams, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import {
   Send,
@@ -9,6 +10,7 @@ import {
   Loader2,
   Sparkles,
   Heart,
+  Plus,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence, type Variants } from "framer-motion";
@@ -56,7 +58,20 @@ const SUGGESTED_PROMPTS = [
   "I had a really good day and want to talk about it",
 ];
 
+interface RawPersistedMessage {
+  role: "user" | "assistant";
+  content: string;
+  timestamp: string;
+  emotion?: Emotion;
+  confidence?: number;
+  crisisLevel?: CrisisLevel;
+  technique?: string;
+}
+
 export default function TherapyPage() {
+  const params = useParams<{ sessionId: string }>();
+  const router = useRouter();
+
   const [message, setMessage] = useState("");
   const [isTyping, setIsTyping] = useState(false);
   const [isChatPaused] = useState(false);
@@ -67,6 +82,61 @@ export default function TherapyPage() {
   const [persistedSessionId, setPersistedSessionId] = useState<string | null>(null);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const sessionId = params.sessionId;
+    if (!sessionId || sessionId === "new") return;
+
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(`/api/therapy/${sessionId}`, { cache: "no-store" });
+        if (!res.ok || cancelled) return;
+        const { session } = (await res.json()) as {
+          session: { _id: string; messages: RawPersistedMessage[] };
+        };
+        if (cancelled) return;
+
+        const restored: Message[] = session.messages.map((m) => ({
+          role: m.role,
+          content: m.content,
+          timestamp: new Date(m.timestamp),
+          metadata: {
+            emotion: m.emotion,
+            confidence: m.confidence,
+            crisisLevel: m.crisisLevel,
+            technique: m.technique,
+          },
+        }));
+
+        const lastAnalyzed = [...session.messages].reverse().find((m) => m.emotion);
+
+        setMessages(restored);
+        setPersistedSessionId(session._id);
+        if (lastAnalyzed) {
+          setLatestEmotion(lastAnalyzed.emotion ?? null);
+          setLatestConfidence(lastAnalyzed.confidence ?? null);
+          setCrisisLevel(lastAnalyzed.crisisLevel ?? "none");
+        }
+      } catch (error) {
+        console.error("Error restoring therapy session:", error);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [params.sessionId]);
+
+  const handleNewChat = () => {
+    setMessages([]);
+    setLatestEmotion(null);
+    setLatestConfidence(null);
+    setCrisisLevel("none");
+    setPersistedSessionId(null);
+    setMessage("");
+    router.push("/therapy/new");
+  };
 
   const scrollToBottom = () => {
     if (messagesEndRef.current) {
@@ -229,10 +299,21 @@ export default function TherapyPage() {
             <div className="flex items-center gap-2 p-4 border-b">
                 <div className="w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center">
                 <Bot className="w-5 h-5" /></div>
-                <div>
+                <div className="flex-1">
                   <h2 className="font-semibold font-heading">AI Therapist</h2>
                   <p className="text-sm text-muted-foreground">{messages.length} messages</p>
                 </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="gap-1.5 rounded-full"
+                  onClick={handleNewChat}
+                  disabled={messages.length === 0}
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  New Chat
+                </Button>
             </div>
 
             {(crisisLevel === "medium" || crisisLevel === "high") && (

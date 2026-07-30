@@ -175,7 +175,7 @@ export default function DashboardPage() {
     };
 
     const handleStartTherapy = () => {
-        router.push("/therapy/new");
+        router.push("/therapy");
     }
 
 

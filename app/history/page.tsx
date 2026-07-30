@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { motion } from "framer-motion";
 import { format, isSameDay } from "date-fns";
 import { Search, MessageCircle, Phone, AlertTriangle, History as HistoryIcon } from "lucide-react";
@@ -35,6 +36,39 @@ interface ConversationSession {
   dominantEmotion: Emotion;
   crisisLevel: CrisisLevel;
   title: string;
+}
+
+function SessionCardBody({ session }: { session: ConversationSession }) {
+  return (
+    <CardContent className="p-4">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="font-medium">{session.title}</p>
+        <span className="text-xs text-muted-foreground">
+          {format(session.date, "h:mm a")} · {session.durationMinutes} min
+          {session.type === "chat" ? ` · ${session.messageCount} messages` : ""}
+        </span>
+      </div>
+      <div className="flex flex-wrap items-center gap-2 mt-2">
+        <Badge
+          variant="outline"
+          className={cn(
+            "text-xs border",
+            EMOTION_COLORS[session.dominantEmotion].bg,
+            EMOTION_COLORS[session.dominantEmotion].border
+          )}
+        >
+          <span className={cn("h-1.5 w-1.5 rounded-full", EMOTION_COLORS[session.dominantEmotion].dot)} />
+          {session.dominantEmotion}
+        </Badge>
+        {session.crisisLevel !== "none" && (
+          <Badge variant="crisis" className="text-xs">
+            <AlertTriangle className="h-3 w-3" />
+            {CRISIS_COLORS[session.crisisLevel].label}
+          </Badge>
+        )}
+      </div>
+    </CardContent>
+  );
 }
 
 interface RawMessage {
@@ -224,36 +258,17 @@ export default function HistoryPage() {
                           <MessageCircle className="w-4.5 h-4.5 text-primary" />
                         )}
                       </div>
-                      <Card className="flex-1">
-                        <CardContent className="p-4">
-                          <div className="flex flex-wrap items-center justify-between gap-2">
-                            <p className="font-medium">{session.title}</p>
-                            <span className="text-xs text-muted-foreground">
-                              {format(session.date, "h:mm a")} · {session.durationMinutes} min
-                              {session.type === "chat" ? ` · ${session.messageCount} messages` : ""}
-                            </span>
-                          </div>
-                          <div className="flex flex-wrap items-center gap-2 mt-2">
-                            <Badge
-                              variant="outline"
-                              className={cn(
-                                "text-xs border",
-                                EMOTION_COLORS[session.dominantEmotion].bg,
-                                EMOTION_COLORS[session.dominantEmotion].border
-                              )}
-                            >
-                              <span className={cn("h-1.5 w-1.5 rounded-full", EMOTION_COLORS[session.dominantEmotion].dot)} />
-                              {session.dominantEmotion}
-                            </Badge>
-                            {session.crisisLevel !== "none" && (
-                              <Badge variant="crisis" className="text-xs">
-                                <AlertTriangle className="h-3 w-3" />
-                                {CRISIS_COLORS[session.crisisLevel].label}
-                              </Badge>
-                            )}
-                          </div>
-                        </CardContent>
-                      </Card>
+                      {session.type === "chat" ? (
+                        <Link href={`/therapy/${session.id}`} className="flex-1">
+                          <Card className="hover:border-primary/40 transition-colors">
+                            <SessionCardBody session={session} />
+                          </Card>
+                        </Link>
+                      ) : (
+                        <Card className="flex-1">
+                          <SessionCardBody session={session} />
+                        </Card>
+                      )}
                     </motion.div>
                   ))}
                 </div>

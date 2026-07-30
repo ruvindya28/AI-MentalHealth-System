@@ -12,7 +12,7 @@ import { cn } from "@/lib/utils";
 export default function Header() {
     const appNavItems = [
         { href: "/dashboard", label: "Dashboard" },
-        { href: "/therapy/new", label: "Chat" },
+        { href: "/therapy", label: "Chat" },
         { href: "/history", label: "History" },
         { href: "/reports", label: "Reports" },
     ];
@@ -45,7 +45,8 @@ export default function Header() {
                     <div className="flex items-center gap-3">
                         <nav className="hidden lg:flex items-center gap-1">
                             {navItems.map((item) => {
-                                const active = pathname === item.href;
+                                const active =
+                                    pathname === item.href || pathname.startsWith(`${item.href}/`);
                                 return (
                                     <Link
                                         key={item.href}
