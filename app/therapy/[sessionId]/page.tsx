@@ -20,6 +20,7 @@ import {
   EMOTION_COLORS,
   type CrisisLevel,
   type Emotion,
+  type EmotionAnalysis,
 } from "@/lib/mock-emotion-analyzer";
 import { generateReply } from "@/lib/mock-therapist-responses";
 import { useWellness } from "@/lib/contexts/wellness-context";
@@ -117,6 +118,21 @@ export default function TherapyPage() {
     }
   };
 
+  const analyzeMessage = async (text: string): Promise<EmotionAnalysis> => {
+    try {
+      const res = await fetch("/api/analyze", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text }),
+      });
+      if (!res.ok) throw new Error("Analyze request failed");
+      return (await res.json()) as EmotionAnalysis;
+    } catch (error) {
+      console.error("Error analyzing message, falling back to local heuristic:", error);
+      return analyzeText(text);
+    }
+  };
+
   const ensureSession = async (): Promise<string | null> => {
     if (persistedSessionId) return persistedSessionId;
     try {
@@ -139,7 +155,7 @@ export default function TherapyPage() {
     const trimmed = text.trim();
     if (!trimmed || isTyping || isChatPaused) return;
 
-    const analysis = analyzeText(trimmed);
+    const analysis = await analyzeMessage(trimmed);
 
     const userMessage: Message = {
       role: "user",
