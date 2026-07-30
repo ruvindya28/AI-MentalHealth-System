@@ -130,6 +130,24 @@ export default function TherapyPage() {
     }
   };
 
+  const fetchReply = async (
+    sessionId: string,
+    analysis: EmotionAnalysis
+  ): Promise<{ text: string; technique: string }> => {
+    try {
+      const res = await fetch(`/api/therapy/${sessionId}/reply`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(analysis),
+      });
+      if (!res.ok) throw new Error("Reply request failed");
+      return (await res.json()) as { text: string; technique: string };
+    } catch (error) {
+      console.error("Error generating reply, falling back to local heuristic:", error);
+      return generateReply(analysis);
+    }
+  };
+
   const ensureSession = async (): Promise<string | null> => {
     if (persistedSessionId) return persistedSessionId;
     try {
@@ -174,7 +192,9 @@ export default function TherapyPage() {
 
     const sessionId = await ensureSession();
     if (sessionId) {
-      persistMessage(sessionId, {
+      // Awaited so the message is in the database before fetchReply asks
+      // the server to build conversation history from it.
+      await persistMessage(sessionId, {
         role: "user",
         content: trimmed,
         emotion: analysis.emotion,
@@ -183,27 +203,18 @@ export default function TherapyPage() {
       });
     }
 
-    setTimeout(() => {
-      const reply = generateReply(analysis);
-      setMessages((prev) => [
-        ...prev,
-        {
-          role: "assistant",
-          content: reply.text,
-          timestamp: new Date(),
-          metadata: { technique: reply.technique },
-        },
-      ]);
-      setIsTyping(false);
+    const reply = sessionId ? await fetchReply(sessionId, analysis) : generateReply(analysis);
 
-      if (sessionId) {
-        persistMessage(sessionId, {
-          role: "assistant",
-          content: reply.text,
-          technique: reply.technique,
-        });
-      }
-    }, 900);
+    setMessages((prev) => [
+      ...prev,
+      {
+        role: "assistant",
+        content: reply.text,
+        timestamp: new Date(),
+        metadata: { technique: reply.technique },
+      },
+    ]);
+    setIsTyping(false);
   };
 
   const handleSubmit = (e: React.FormEvent) => {

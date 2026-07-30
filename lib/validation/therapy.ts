@@ -8,3 +8,9 @@ export const createMessageSchema = z.object({
     crisisLevel: z.enum(["none", "low", "medium", "high"]).optional(),
     technique: z.string().trim().max(120).optional(),
 });
+
+export const generateReplySchema = z.object({
+    emotion: z.enum(["Anxious", "Sad", "Angry", "Hopeful", "Calm", "Neutral"]),
+    confidence: z.number().min(0).max(100),
+    crisisLevel: z.enum(["none", "low", "medium", "high"]),
+});
