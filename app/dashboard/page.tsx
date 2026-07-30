@@ -18,7 +18,7 @@ import { VoiceSessionCard, type CallRecord } from "@/components/voice/voice-sess
 import { CallHistory } from "@/components/voice/call-history";
 import { EmotionTrends } from "@/components/dashboard/emotion-trends";
 import { CrisisAlerts } from "@/components/dashboard/crisis-alerts";
-import { useWellness } from "@/lib/contexts/wellness-context";
+import { sessionsToEmotionLog, type EmotionLogEntry } from "@/lib/emotion-log";
 import { computeWellnessScore, wellnessScoreLabel } from "@/lib/mock-wellness-score";
 
 
@@ -32,8 +32,7 @@ export default function DashboardPage() {
     const [callHistory, setCallHistory] = useState<CallRecord[]>([]);
     const [activityCount, setActivityCount] = useState(0);
     const [chatSessionCount, setChatSessionCount] = useState(0);
-
-    const { emotionLog } = useWellness();
+    const [emotionLog, setEmotionLog] = useState<EmotionLogEntry[]>([]);
 
     const router = useRouter();
 
@@ -81,12 +80,15 @@ export default function DashboardPage() {
         }
     };
 
-    const fetchChatSessionCount = async () => {
+    const fetchTherapyData = async () => {
         try {
             const res = await fetch("/api/therapy", { cache: "no-store" });
             if (!res.ok) return;
-            const { sessions } = (await res.json()) as { sessions: unknown[] };
+            const { sessions } = (await res.json()) as {
+                sessions: Parameters<typeof sessionsToEmotionLog>[0];
+            };
             setChatSessionCount(sessions.length);
+            setEmotionLog(sessionsToEmotionLog(sessions));
         } catch (error) {
             console.error("Error loading therapy sessions:", error);
         }
@@ -97,7 +99,7 @@ export default function DashboardPage() {
         // eslint-disable-next-line react-hooks/set-state-in-effect
         fetchTodayMoodScore();
         fetchActivityCount();
-        fetchChatSessionCount();
+        fetchTherapyData();
     }, []);
 
     const completionRate = 100;

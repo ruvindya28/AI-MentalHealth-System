@@ -2,7 +2,6 @@
 
 import { ThemeProvider } from "next-themes";
 import { AuthProvider } from "@/lib/contexts/auth-context";
-import { WellnessProvider } from "@/lib/contexts/wellness-context";
 import { Toaster } from "@/components/ui/sonner";
 import type { UserDTO } from "@/lib/dto/user";
 
@@ -20,10 +19,8 @@ export function Providers({ children, initialUser }: ProvidersProps){
             disableTransitionOnChange
             >
                 <AuthProvider initialUser={initialUser}>
-                    <WellnessProvider>
-                        {children}
-                        <Toaster position="bottom-right" richColors closeButton />
-                    </WellnessProvider>
+                    {children}
+                    <Toaster position="bottom-right" richColors closeButton />
                 </AuthProvider>
             </ThemeProvider>
         )

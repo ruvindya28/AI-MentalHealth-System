@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { CRISIS_COLORS } from "@/lib/mock-emotion-analyzer";
-import type { EmotionLogEntry } from "@/lib/contexts/wellness-context";
+import type { EmotionLogEntry } from "@/lib/emotion-log";
 
 interface CrisisAlertsProps {
   entries: EmotionLogEntry[];

@@ -23,7 +23,6 @@ import {
   type EmotionAnalysis,
 } from "@/lib/mock-emotion-analyzer";
 import { generateReply } from "@/lib/mock-therapist-responses";
-import { useWellness } from "@/lib/contexts/wellness-context";
 
 const glowAnimation: Variants = {
   initial: { opacity: 0.5, scale: 1 },
@@ -66,8 +65,6 @@ export default function TherapyPage() {
   const [latestConfidence, setLatestConfidence] = useState<number | null>(null);
   const [crisisLevel, setCrisisLevel] = useState<CrisisLevel>("none");
   const [persistedSessionId, setPersistedSessionId] = useState<string | null>(null);
-
-  const { addEmotionEntry } = useWellness();
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -172,11 +169,6 @@ export default function TherapyPage() {
     setLatestEmotion(analysis.emotion);
     setLatestConfidence(analysis.confidence);
     setCrisisLevel(analysis.crisisLevel);
-    addEmotionEntry({
-      emotion: analysis.emotion,
-      confidence: analysis.confidence,
-      crisisLevel: analysis.crisisLevel,
-    });
     setMessage("");
     setIsTyping(true);
 

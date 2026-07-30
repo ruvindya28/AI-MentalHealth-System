@@ -11,7 +11,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { EMOTION_COLORS, EMOTION_ORDER, type Emotion } from "@/lib/mock-emotion-analyzer";
-import type { EmotionLogEntry } from "@/lib/contexts/wellness-context";
+import type { EmotionLogEntry } from "@/lib/emotion-log";
 
 interface EmotionTrendsProps {
   entries: EmotionLogEntry[];

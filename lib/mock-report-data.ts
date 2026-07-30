@@ -1,5 +1,5 @@
 import { subDays, format, isSameDay } from "date-fns";
-import type { EmotionLogEntry } from "@/lib/contexts/wellness-context";
+import type { EmotionLogEntry } from "@/lib/emotion-log";
 import { EMOTION_ORDER, type Emotion } from "@/lib/mock-emotion-analyzer";
 
 export interface EmotionDistributionRow {

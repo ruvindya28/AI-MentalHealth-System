@@ -1,4 +1,4 @@
-import type { EmotionLogEntry } from "@/lib/contexts/wellness-context";
+import type { EmotionLogEntry } from "@/lib/emotion-log";
 
 /**
  * Illustrative mock wellness score — blends today's mood score, the share of

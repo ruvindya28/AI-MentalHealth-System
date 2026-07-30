@@ -9,8 +9,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-import type { EmotionLogEntry } from "@/lib/contexts/wellness-context";
-import { EMOTION_COLORS, type Emotion, type CrisisLevel } from "@/lib/mock-emotion-analyzer";
+import { sessionsToEmotionLog, type EmotionLogEntry } from "@/lib/emotion-log";
+import { EMOTION_COLORS } from "@/lib/mock-emotion-analyzer";
 import {
   getEmotionDistribution,
   getTrend,
@@ -21,19 +21,6 @@ import { EmotionDistributionBars } from "@/components/charts/emotion-distributio
 import { TrendSparkline } from "@/components/charts/trend-sparkline";
 import { toast } from "sonner";
 
-interface RawMessage {
-  role: "user" | "assistant";
-  timestamp: string;
-  emotion?: Emotion;
-  confidence?: number;
-  crisisLevel?: CrisisLevel;
-}
-
-interface RawSession {
-  _id: string;
-  messages: RawMessage[];
-}
-
 export default function ReportsPage() {
   const [entries, setEntries] = useState<EmotionLogEntry[]>([]);
 
@@ -41,19 +28,10 @@ export default function ReportsPage() {
     try {
       const res = await fetch("/api/therapy", { cache: "no-store" });
       if (!res.ok) return;
-      const { sessions } = (await res.json()) as { sessions: RawSession[] };
-      const flattened: EmotionLogEntry[] = sessions.flatMap((session) =>
-        session.messages
-          .filter((m): m is RawMessage & { emotion: Emotion } => m.role === "user" && !!m.emotion)
-          .map((m, i) => ({
-            id: `${session._id}-${i}`,
-            timestamp: new Date(m.timestamp),
-            emotion: m.emotion,
-            confidence: m.confidence ?? 0,
-            crisisLevel: m.crisisLevel ?? "none",
-          }))
-      );
-      setEntries(flattened);
+      const { sessions } = (await res.json()) as {
+        sessions: Parameters<typeof sessionsToEmotionLog>[0];
+      };
+      setEntries(sessionsToEmotionLog(sessions));
     } catch (error) {
       console.error("Error loading report data:", error);
     }
