@@ -18,12 +18,16 @@ import ReactMarkdown from "react-markdown";
 import { Badge } from "@/components/ui/badge";
 import { LiveAnalysisPanel } from "@/components/therapy/live-analysis-panel";
 import {
-  analyzeText,
   EMOTION_COLORS,
   type CrisisLevel,
   type Emotion,
-  type EmotionAnalysis,
 } from "@/lib/mock-emotion-analyzer";
+import {
+  analyzeMessage,
+  createTherapySession,
+  persistTherapyMessage,
+  fetchTherapyReply,
+} from "@/lib/therapy-client";
 import { generateReply } from "@/lib/mock-therapist-responses";
 
 const glowAnimation: Variants = {
@@ -163,77 +167,17 @@ export default function TherapyPage() {
     {}
   );
 
-  const persistMessage = async (
-    sessionId: string,
-    msg: {
-      role: "user" | "assistant";
-      content: string;
-      emotion?: Emotion;
-      confidence?: number;
-      crisisLevel?: CrisisLevel;
-      technique?: string;
-    }
-  ) => {
-    try {
-      await fetch(`/api/therapy/${sessionId}/messages`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(msg),
-      });
-    } catch (error) {
-      console.error("Error saving message:", error);
-    }
-  };
-
-  const analyzeMessage = async (text: string): Promise<EmotionAnalysis> => {
-    try {
-      const res = await fetch("/api/analyze", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text }),
-      });
-      if (!res.ok) throw new Error("Analyze request failed");
-      return (await res.json()) as EmotionAnalysis;
-    } catch (error) {
-      console.error("Error analyzing message, falling back to local heuristic:", error);
-      return analyzeText(text);
-    }
-  };
-
-  const fetchReply = async (
-    sessionId: string,
-    analysis: EmotionAnalysis
-  ): Promise<{ text: string; technique: string }> => {
-    try {
-      const res = await fetch(`/api/therapy/${sessionId}/reply`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(analysis),
-      });
-      if (!res.ok) throw new Error("Reply request failed");
-      return (await res.json()) as { text: string; technique: string };
-    } catch (error) {
-      console.error("Error generating reply, falling back to local heuristic:", error);
-      return generateReply(analysis);
-    }
-  };
-
   const ensureSession = async (): Promise<string | null> => {
     if (persistedSessionId) return persistedSessionId;
-    try {
-      const res = await fetch("/api/therapy", { method: "POST" });
-      if (!res.ok) throw new Error("Failed to create session");
-      const { session } = (await res.json()) as { session: { _id: string } };
-      setPersistedSessionId(session._id);
+    const sessionId = await createTherapySession("chat");
+    if (sessionId) {
+      setPersistedSessionId(sessionId);
       // Cosmetic URL update only — router.replace() to a new dynamic segment
       // remounts this page and wipes in-progress chat state, so this bypasses
       // the Next.js router entirely.
-      window.history.replaceState(null, "", `/therapy/${session._id}`);
-      return session._id;
-    } catch (error) {
-      console.error("Error creating therapy session:", error);
-      return null;
+      window.history.replaceState(null, "", `/therapy/${sessionId}`);
     }
+    return sessionId;
   };
 
   const sendMessage = async (text: string) => {
@@ -262,9 +206,9 @@ export default function TherapyPage() {
 
     const sessionId = await ensureSession();
     if (sessionId) {
-      // Awaited so the message is in the database before fetchReply asks
-      // the server to build conversation history from it.
-      await persistMessage(sessionId, {
+      // Awaited so the message is in the database before fetchTherapyReply
+      // asks the server to build conversation history from it.
+      await persistTherapyMessage(sessionId, {
         role: "user",
         content: trimmed,
         emotion: analysis.emotion,
@@ -273,7 +217,7 @@ export default function TherapyPage() {
       });
     }
 
-    const reply = sessionId ? await fetchReply(sessionId, analysis) : generateReply(analysis);
+    const reply = sessionId ? await fetchTherapyReply(sessionId, analysis) : generateReply(analysis);
 
     setMessages((prev) => [
       ...prev,

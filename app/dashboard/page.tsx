@@ -14,13 +14,27 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { AnxietyGames } from "@/components/games/anxiety-games";
 import { MoodForm } from "@/components/mood/mood-form";
 import { ActivityLogger } from "@/components/activities/activity-logger";
-import { VoiceSessionCard, type CallRecord } from "@/components/voice/voice-session-card";
+import { VoiceSessionCard } from "@/components/voice/voice-session-card";
 import { CallHistory } from "@/components/voice/call-history";
 import { EmotionTrends } from "@/components/dashboard/emotion-trends";
 import { CrisisAlerts } from "@/components/dashboard/crisis-alerts";
 import { sessionsToEmotionLog, type EmotionLogEntry } from "@/lib/emotion-log";
+import { sessionsToCallRecords, type CallRecord } from "@/lib/voice/call-history";
 import { computeWellnessScore, wellnessScoreLabel } from "@/lib/mock-wellness-score";
+import type { Emotion, CrisisLevel } from "@/lib/mock-emotion-analyzer";
 
+interface RawTherapySession {
+    _id: string;
+    type: string;
+    messages: {
+        role: "user" | "assistant";
+        content: string;
+        timestamp: string;
+        emotion?: Emotion;
+        confidence?: number;
+        crisisLevel?: CrisisLevel;
+    }[];
+}
 
 export default function DashboardPage() {
 
@@ -84,10 +98,9 @@ export default function DashboardPage() {
         try {
             const res = await fetch("/api/therapy", { cache: "no-store" });
             if (!res.ok) return;
-            const { sessions } = (await res.json()) as {
-                sessions: Parameters<typeof sessionsToEmotionLog>[0];
-            };
-            setChatSessionCount(sessions.length);
+            const { sessions } = (await res.json()) as { sessions: RawTherapySession[] };
+            setChatSessionCount(sessions.filter((s) => s.type === "chat").length);
+            setCallHistory(sessionsToCallRecords(sessions));
             setEmotionLog(sessionsToEmotionLog(sessions));
         } catch (error) {
             console.error("Error loading therapy sessions:", error);
@@ -170,8 +183,8 @@ export default function DashboardPage() {
         setShowActivityLogger(true);
     };
 
-    const handleCallEnd = (record: CallRecord) => {
-        setCallHistory((prev) => [record, ...prev]);
+    const handleCallEnd = () => {
+        fetchTherapyData();
     };
 
     const handleStartTherapy = () => {

@@ -10,7 +10,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import type { CallRecord } from "./voice-session-card";
+import type { CallRecord } from "@/lib/voice/call-history";
 
 interface CallHistoryProps {
   calls: CallRecord[];

@@ -1,5 +1,9 @@
 import { z } from "zod";
 
+export const createSessionSchema = z.object({
+    type: z.enum(["chat", "voice"]).default("chat"),
+});
+
 export const createMessageSchema = z.object({
     role: z.enum(["user", "assistant"]),
     content: z.string().trim().min(1, "Message content is required").max(4000),

@@ -4,7 +4,7 @@ import { useMemo } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import { cn } from "@/lib/utils";
 
-export type VoiceOrbState = "idle" | "listening" | "speaking";
+export type VoiceOrbState = "idle" | "listening" | "processing" | "speaking";
 
 interface VoiceOrbProps {
   state: VoiceOrbState;
@@ -17,6 +17,7 @@ interface VoiceOrbProps {
 const STATE_LABEL: Record<VoiceOrbState, string> = {
   idle: "Ready",
   listening: "Listening…",
+  processing: "Thinking…",
   speaking: "Speaking…",
 };
 
@@ -44,8 +45,10 @@ export function VoiceOrb({
     [barCount]
   );
 
-  const ringDuration = state === "idle" ? 4 : state === "listening" ? 1.6 : 1.2;
+  const ringDuration =
+    state === "idle" ? 4 : state === "processing" ? 1 : state === "listening" ? 1.6 : 1.2;
   const isSpeaking = state === "speaking";
+  const isFlatBars = state === "idle" || state === "processing";
 
   return (
     <div className={cn("flex flex-col items-center gap-4", className)}>
@@ -61,7 +64,7 @@ export function VoiceOrb({
                 isSpeaking ? "bg-accent/25" : "bg-primary/20"
               )}
               animate={
-                state === "idle"
+                isFlatBars
                   ? { scale: [1, 1.05, 1], opacity: [0.45, 0.65, 0.45] }
                   : { scale: [1, 1.35, 1], opacity: [0.6, 0, 0.6] }
               }
@@ -73,7 +76,7 @@ export function VoiceOrb({
                 isSpeaking ? "bg-accent/20" : "bg-primary/15"
               )}
               animate={
-                state === "idle"
+                isFlatBars
                   ? { scale: [1, 1.03, 1], opacity: [0.35, 0.5, 0.35] }
                   : { scale: [1, 1.2, 1], opacity: [0.5, 0, 0.5] }
               }
@@ -98,7 +101,7 @@ export function VoiceOrb({
           animate={
             reduceMotion
               ? undefined
-              : state === "idle"
+              : isFlatBars
                 ? { scale: [1, 1.04, 1] }
                 : { scale: [1, 1.06, 1] }
           }
@@ -120,10 +123,10 @@ export function VoiceOrb({
             className={cn(
               "w-1 rounded-full",
               isSpeaking ? "bg-accent-foreground/50" : "bg-primary/50",
-              state === "idle" && "opacity-30"
+              isFlatBars && "opacity-30"
             )}
             animate={
-              reduceMotion || state === "idle"
+              reduceMotion || isFlatBars
                 ? { height: 4 }
                 : state === "listening"
                   ? { height: [4, 6 + bar.seed * 16, 4] }
