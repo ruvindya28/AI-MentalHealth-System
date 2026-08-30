@@ -217,3 +217,79 @@
     @apply font-heading;
   }
 }
+
+/* Sonner Notification Toaster overrides for pristine readability & contrast */
+[data-sonner-toaster] {
+  font-family: var(--font-inter), sans-serif;
+}
+
+[data-sonner-toaster][data-sonner-theme="dark"] {
+  --normal-bg: #1a202c;
+  --normal-border: rgba(255, 255, 255, 0.16);
+  --normal-text: #f8fafc;
+
+  /* High contrast, vibrant dark mode notification colors */
+  --success-bg: #0d2818;
+  --success-border: #1e7040;
+  --success-text: #6ee7b7;
+
+  --info-bg: #0c2138;
+  --info-border: #1d4e89;
+  --info-text: #93c5fd;
+
+  --warning-bg: #2d1d07;
+  --warning-border: #78480e;
+  --warning-text: #fcd34d;
+
+  --error-bg: #2e0e13;
+  --error-border: #7a1c25;
+  --error-text: #fca5a5;
+}
+
+[data-sonner-toaster][data-sonner-theme="light"] {
+  --normal-bg: #ffffff;
+  --normal-border: #e2e8f0;
+  --normal-text: #1e293b;
+
+  --success-bg: #ecfdf5;
+  --success-border: #a7f3d0;
+  --success-text: #065f46;
+
+  --info-bg: #eff6ff;
+  --info-border: #bfdbfe;
+  --info-text: #1e40af;
+
+  --warning-bg: #fffbeb;
+  --warning-border: #fde68a;
+  --warning-text: #92400e;
+
+  --error-bg: #fef2f2;
+  --error-border: #fecaca;
+  --error-text: #991b1b;
+}
+
+[data-rich-colors="true"][data-sonner-toast] {
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.25), 0 8px 10px -6px rgba(0, 0, 0, 0.2);
+}
+
+[data-rich-colors="true"][data-sonner-toast] [data-title] {
+  font-weight: 600;
+  font-size: 0.875rem;
+}
+
+[data-rich-colors="true"][data-sonner-toast] [data-description] {
+  color: inherit !important;
+  opacity: 0.9;
+  font-size: 0.8125rem;
+}
+
+[data-rich-colors="true"][data-sonner-toast] [data-close-button] {
+  color: inherit;
+  border-color: currentColor;
+  opacity: 0.7;
+}
+
+[data-rich-colors="true"][data-sonner-toast] [data-close-button]:hover {
+  opacity: 1;
+}
+

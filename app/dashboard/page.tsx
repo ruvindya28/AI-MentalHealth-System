@@ -22,6 +22,7 @@ import { sessionsToEmotionLog, type EmotionLogEntry } from "@/lib/emotion-log";
 import { sessionsToCallRecords, type CallRecord } from "@/lib/voice/call-history";
 import { computeWellnessScore, wellnessScoreLabel } from "@/lib/mock-wellness-score";
 import type { Emotion, CrisisLevel } from "@/lib/mock-emotion-analyzer";
+import { useAuth } from "@/lib/contexts/auth-context";
 
 interface RawTherapySession {
     _id: string;
@@ -37,7 +38,8 @@ interface RawTherapySession {
 }
 
 export default function DashboardPage() {
-
+    const { user } = useAuth();
+    const firstName = user?.name ? user.name.trim().split(/\s+/)[0] : "";
     const [currentTime, setCurrentTime] = useState<Date | null>(null);
     const [showMoodModal, setShowMoodModal] = useState(false);
     const [isSavingMood, setIsSavingMood] = useState(false);
@@ -201,7 +203,9 @@ export default function DashboardPage() {
                     transition={{ duration: 0.6 }}
                     className="flex flex-col gap-1"
                 >
-                    <h1 className="text-3xl font-bold font-heading">Welcome back</h1>
+                    <h1 className="text-3xl font-bold font-heading">
+                        Welcome back{firstName ? `, ${firstName}` : ""}
+                    </h1>
                     <p className="text-muted-foreground text-sm">
                         {currentTime?.toLocaleTimeString("en-US", {
                             weekday: "long",

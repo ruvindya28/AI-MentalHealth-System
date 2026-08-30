@@ -4,22 +4,21 @@ import { useTheme } from "next-themes"
 import { Toaster as Sonner, type ToasterProps } from "sonner"
 
 const Toaster = ({ ...props }: ToasterProps) => {
-  const { theme = "system" } = useTheme()
+  const { theme = "system", resolvedTheme } = useTheme()
 
   return (
     <Sonner
-      theme={theme as ToasterProps["theme"]}
+      theme={(resolvedTheme || theme) as ToasterProps["theme"]}
       className="toaster group"
       toastOptions={{
         classNames: {
           toast:
-            "group toast rounded-2xl border border-border bg-popover text-popover-foreground shadow-lg font-sans",
-          description: "text-muted-foreground",
-          actionButton: "bg-primary text-primary-foreground rounded-lg",
-          cancelButton: "bg-muted text-muted-foreground rounded-lg",
-          success: "!text-success-foreground data-[type=success]:[&_svg]:text-success",
-          warning: "!text-warning-foreground data-[type=warning]:[&_svg]:text-warning",
-          error: "!text-crisis-foreground data-[type=error]:[&_svg]:text-crisis",
+            "group toast rounded-2xl border font-sans text-sm shadow-xl transition-all duration-200",
+          title: "font-semibold tracking-tight",
+          description: "opacity-90 font-normal",
+          actionButton: "bg-primary text-primary-foreground rounded-xl font-medium",
+          cancelButton: "bg-muted text-muted-foreground rounded-xl font-medium",
+          closeButton: "border border-border/40 hover:opacity-100 transition-opacity",
         },
       }}
       {...props}
