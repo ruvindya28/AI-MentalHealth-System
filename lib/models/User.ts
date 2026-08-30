@@ -13,6 +13,10 @@ const userSchema = new Schema(
         },
         passwordHash: { type: String, required: true, select: false },
         timezone: { type: String, default: "UTC" },
+        preferences: {
+            notifications: { type: Schema.Types.Mixed, default: {} },
+            privacy: { type: Schema.Types.Mixed, default: {} },
+        },
         resetPasswordTokenHash: { type: String, select: false },
         resetPasswordExpires: { type: Date, select: false },
     },
