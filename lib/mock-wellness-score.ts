@@ -2,8 +2,8 @@ import type { EmotionLogEntry } from "@/lib/emotion-log";
 
 /**
  * Illustrative mock wellness score — blends today's mood score, the share of
- * logged moments that were crisis-free, and activity completion. Not a
- * clinical metric, just a friendly at-a-glance number for the dashboard.
+ * logged moments that were crisis-free, and activity completion. Returns null
+ * if the user has not logged any mood or session data yet.
  */
 export function computeWellnessScore({
   moodScore,
@@ -13,7 +13,10 @@ export function computeWellnessScore({
   moodScore: number | null;
   emotionLog: EmotionLogEntry[];
   completionRate: number;
-}): number {
+}): number | null {
+  const hasData = moodScore !== null || emotionLog.length > 0;
+  if (!hasData) return null;
+
   const moodComponent = moodScore ?? 65;
   const crisisFlagged = emotionLog.filter((e) => e.crisisLevel !== "none").length;
   const calmShare =
@@ -24,7 +27,8 @@ export function computeWellnessScore({
   return Math.round(Math.min(100, Math.max(0, score)));
 }
 
-export function wellnessScoreLabel(score: number): string {
+export function wellnessScoreLabel(score: number | null): string {
+  if (score === null) return "Awaiting check-in";
   if (score >= 80) return "Thriving";
   if (score >= 60) return "Steady";
   if (score >= 40) return "Getting by";

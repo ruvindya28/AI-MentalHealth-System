@@ -117,14 +117,20 @@ export default function DashboardPage() {
         fetchTherapyData();
     }, []);
 
-    const completionRate = 100;
+    const totalSessions = chatSessionCount + callHistory.length;
+
+    const completionRate = useMemo(() => {
+        let completed = 0;
+        const totalGoals = 2;
+        if (todayMoodScore !== null) completed += 1;
+        if (activityCount > 0 || totalSessions > 0) completed += 1;
+        return Math.round((completed / totalGoals) * 100);
+    }, [todayMoodScore, activityCount, totalSessions]);
 
     const wellnessScore = useMemo(
         () => computeWellnessScore({ moodScore: todayMoodScore, emotionLog, completionRate }),
         [todayMoodScore, emotionLog, completionRate]
     );
-
-    const totalSessions = chatSessionCount + callHistory.length;
 
     const wellnessStats = [
         {
@@ -141,7 +147,7 @@ export default function DashboardPage() {
             icon: Trophy,
             color: "text-secondary-foreground",
             bgColor: "bg-secondary/20",
-            description: "Perfect completion rate",
+            description: completionRate === 100 ? "Daily goals complete" : completionRate === 0 ? "Start your daily goals" : "In progress today",
         },
         {
             title: "Therapy Sessions",
@@ -276,21 +282,27 @@ export default function DashboardPage() {
                             <div className="relative flex h-32 w-32 items-center justify-center">
                                 <svg viewBox="0 0 100 100" className="h-full w-full -rotate-90">
                                     <circle cx="50" cy="50" r="42" fill="none" stroke="var(--color-muted)" strokeWidth="9" />
-                                    <circle
-                                        cx="50" cy="50" r="42" fill="none"
-                                        stroke="var(--color-primary)" strokeWidth="9" strokeLinecap="round"
-                                        strokeDasharray={2 * Math.PI * 42}
-                                        strokeDashoffset={2 * Math.PI * 42 * (1 - wellnessScore / 100)}
-                                        className="transition-all duration-700 ease-out"
-                                    />
+                                    {wellnessScore !== null && (
+                                        <circle
+                                            cx="50" cy="50" r="42" fill="none"
+                                            stroke="var(--color-primary)" strokeWidth="9" strokeLinecap="round"
+                                            strokeDasharray={2 * Math.PI * 42}
+                                            strokeDashoffset={2 * Math.PI * 42 * (1 - wellnessScore / 100)}
+                                            className="transition-all duration-700 ease-out"
+                                        />
+                                    )}
                                 </svg>
                                 <div className="absolute flex flex-col items-center">
-                                    <span className="text-3xl font-bold font-heading">{wellnessScore}</span>
+                                    <span className="text-3xl font-bold font-heading">{wellnessScore !== null ? wellnessScore : "--"}</span>
                                     <span className="text-xs text-muted-foreground">/ 100</span>
                                 </div>
                             </div>
                             <p className="text-sm font-medium text-foreground">{wellnessScoreLabel(wellnessScore)}</p>
-                            <p className="text-xs text-muted-foreground">Based on mood, calm moments, and check-ins</p>
+                            <p className="text-xs text-muted-foreground">
+                                {wellnessScore !== null
+                                    ? "Based on mood, calm moments, and check-ins"
+                                    : "Log your mood or start a session to unlock your score"}
+                            </p>
                         </CardContent>
                     </Card>
                 </div>
