@@ -10,7 +10,8 @@ export interface EmotionDistributionRow {
 export interface TrendPoint {
   date: Date;
   label: string;
-  score: number;
+  score: number | null;
+  checkInCount?: number;
 }
 
 export interface SessionSummary {
@@ -26,95 +27,210 @@ export interface WellnessInsight {
   text: string;
 }
 
-const SEED_BLURBS: Record<Emotion, string> = {
-  Calm: "A steady, grounded conversation — you talked through your day without much tension.",
-  Hopeful: "You shared some good news and what you're looking forward to this week.",
-  Neutral: "A check-in style conversation, mostly reflecting on routine and daily plans.",
-  Anxious: "You worked through some worries about an upcoming deadline together.",
-  Sad: "A gentler session focused on sitting with a difficult feeling without rushing past it.",
-  Angry: "You talked through some frustration and looked at a few ways to release it.",
-};
-
-/** Deterministic pseudo-random in [0,1) so this stays stable across renders. */
-function seeded(i: number) {
-  return (Math.sin(i * 78.233) + 1) / 2;
+export interface MoodLogItem {
+  moodScore: number;
+  createdAt: string | Date;
+  note?: string;
 }
 
+export interface RawTherapySessionItem {
+  _id: string;
+  type?: string;
+  createdAt: string | Date;
+  messages: {
+    role: "user" | "assistant";
+    content: string;
+    timestamp: string | Date;
+    emotion?: Emotion;
+    confidence?: number;
+    crisisLevel?: "none" | "low" | "medium" | "high";
+  }[];
+}
+
+/**
+ * Calculates distribution of emotions from real analyzed messages.
+ */
 export function getEmotionDistribution(
   entries: EmotionLogEntry[]
 ): EmotionDistributionRow[] {
   const counts = entries.reduce<Partial<Record<Emotion, number>>>((acc, e) => {
-    acc[e.emotion] = (acc[e.emotion] ?? 0) + 1;
+    if (e.emotion) {
+      acc[e.emotion] = (acc[e.emotion] ?? 0) + 1;
+    }
     return acc;
   }, {});
   return EMOTION_ORDER.map((emotion) => ({ emotion, count: counts[emotion] ?? 0 }));
 }
 
-export function getTrend(entries: EmotionLogEntry[], days = 7): TrendPoint[] {
+/**
+ * Calculates 7-day emotional stability trend from 100% REAL user data:
+ * Blends real mood check-in scores (/api/mood) and real crisis-free calm moments (/api/therapy).
+ * Returns score: null for days where the user recorded no data (NO fake math numbers).
+ */
+export function getTrend(
+  emotionEntries: EmotionLogEntry[],
+  moodEntries: MoodLogItem[] = [],
+  days = 7
+): TrendPoint[] {
   const points: TrendPoint[] = [];
+
   for (let i = days - 1; i >= 0; i--) {
     const date = subDays(new Date(), i);
-    const dayEntries = entries.filter((e) => isSameDay(e.timestamp, date));
-    let score: number;
-    if (dayEntries.length > 0) {
-      const crisisFree = dayEntries.filter((e) => e.crisisLevel === "none").length;
-      score = Math.round((crisisFree / dayEntries.length) * 100);
-    } else {
-      // Illustrative fallback so the chart isn't empty before any real data exists.
-      score = Math.round(58 + seeded(i + days) * 30);
+    const dayEmotions = emotionEntries.filter((e) => isSameDay(new Date(e.timestamp), date));
+    const dayMoods = moodEntries.filter((m) => isSameDay(new Date(m.createdAt), date));
+
+    const totalCheckIns = dayEmotions.length + dayMoods.length;
+
+    if (totalCheckIns === 0) {
+      points.push({
+        date,
+        label: format(date, "EEE"),
+        score: null,
+        checkInCount: 0,
+      });
+      continue;
     }
-    points.push({ date, label: format(date, "EEE"), score });
+
+    let dayScore: number;
+    if (dayMoods.length > 0 && dayEmotions.length > 0) {
+      const avgMood = dayMoods.reduce((sum, m) => sum + m.moodScore, 0) / dayMoods.length;
+      const crisisFree = dayEmotions.filter((e) => e.crisisLevel === "none").length;
+      const calmScore = (crisisFree / dayEmotions.length) * 100;
+      dayScore = Math.round(avgMood * 0.5 + calmScore * 0.5);
+    } else if (dayMoods.length > 0) {
+      dayScore = Math.round(dayMoods.reduce((sum, m) => sum + m.moodScore, 0) / dayMoods.length);
+    } else {
+      const crisisFree = dayEmotions.filter((e) => e.crisisLevel === "none").length;
+      dayScore = Math.round((crisisFree / dayEmotions.length) * 100);
+    }
+
+    points.push({
+      date,
+      label: format(date, "EEE"),
+      score: Math.min(100, Math.max(0, dayScore)),
+      checkInCount: totalCheckIns,
+    });
   }
+
   return points;
 }
 
-export function getSessionSummaries(entries: EmotionLogEntry[]): SessionSummary[] {
-  if (entries.length > 0) {
-    return entries.slice(0, 6).map((entry, i) => ({
+/**
+ * Summarizes real user therapy sessions from MongoDB.
+ */
+export function getSessionSummaries(
+  rawSessions: RawTherapySessionItem[],
+  fallbackEntries: EmotionLogEntry[] = []
+): SessionSummary[] {
+  if (rawSessions && rawSessions.length > 0) {
+    return rawSessions.slice(0, 10).map((session) => {
+      const messages = session.messages || [];
+      const userMessages = messages.filter((m) => m.role === "user");
+
+      const emotionCounts = messages.reduce<Partial<Record<Emotion, number>>>((acc, m) => {
+        if (m.emotion) acc[m.emotion] = (acc[m.emotion] ?? 0) + 1;
+        return acc;
+      }, {});
+
+      const dominantEmotion =
+        (Object.entries(emotionCounts) as [Emotion, number][]).reduce<[Emotion, number] | null>(
+          (best, entry) => (!best || entry[1] > best[1] ? entry : best),
+          null
+        )?.[0] ?? "Neutral";
+
+      const first = messages[0] ? new Date(messages[0].timestamp) : new Date(session.createdAt);
+      const last = messages.length > 0 ? new Date(messages[messages.length - 1].timestamp) : first;
+      const durationMinutes = Math.max(1, Math.round((last.getTime() - first.getTime()) / 60000));
+
+      const firstUserMsg = userMessages[0]?.content;
+      const blurb = firstUserMsg
+        ? firstUserMsg.length > 90
+          ? `${firstUserMsg.slice(0, 90)}...`
+          : firstUserMsg
+        : "Therapy check-in session";
+
+      return {
+        id: session._id,
+        date: new Date(session.createdAt),
+        durationMinutes,
+        dominantEmotion,
+        blurb,
+      };
+    });
+  }
+
+  if (fallbackEntries.length > 0) {
+    return fallbackEntries.slice(0, 6).map((entry) => ({
       id: entry.id,
       date: entry.timestamp,
-      durationMinutes: 4 + Math.round(seeded(i) * 12),
+      durationMinutes: 5,
       dominantEmotion: entry.emotion,
-      blurb: SEED_BLURBS[entry.emotion],
+      blurb: `Logged emotional check-in reflecting ${entry.emotion.toLowerCase()} feelings.`,
     }));
   }
-  // Illustrative seed sessions for a fresh account with no history yet.
-  return EMOTION_ORDER.slice(0, 4).map((emotion, i) => ({
-    id: `seed-${i}`,
-    date: subDays(new Date(), i * 2 + 1),
-    durationMinutes: 6 + Math.round(seeded(i) * 10),
-    dominantEmotion: emotion,
-    blurb: SEED_BLURBS[emotion],
-  }));
+
+  return [];
 }
 
-export function getWellnessInsights(entries: EmotionLogEntry[]): WellnessInsight[] {
+/**
+ * Generates personalized insights purely based on real user activity.
+ */
+export function getWellnessInsights(
+  entries: EmotionLogEntry[],
+  moodEntries: MoodLogItem[] = []
+): WellnessInsight[] {
   const distribution = getEmotionDistribution(entries);
   const top = distribution.reduce((a, b) => (b.count > a.count ? b : a), distribution[0]);
   const crisisFlagged = entries.filter((e) => e.crisisLevel !== "none").length;
 
+  const totalEntries = entries.length + moodEntries.length;
+
+  if (totalEntries === 0) {
+    return [
+      {
+        id: "getting-started",
+        text: "Welcome to your report. Once you start logging moods and conversations, your emotional trends will appear here.",
+      },
+      {
+        id: "tracking-tip",
+        text: "Daily check-ins help MindCare identify what routines and thoughts support your emotional well-being.",
+      },
+      {
+        id: "privacy-notice",
+        text: "Your conversations and emotional logs are completely confidential and encrypted.",
+      },
+    ];
+  }
+
   const insights: WellnessInsight[] = [];
-  if (top.count > 0) {
+
+  if (top && top.count > 0) {
     insights.push({
       id: "top-emotion",
-      text: `${top.emotion} has been your most common check-in feeling recently — worth noticing what's contributing to it.`,
-    });
-  } else {
-    insights.push({
-      id: "getting-started",
-      text: "Once you start logging moods and conversations, your patterns will show up here.",
+      text: `${top.emotion} has been your most common check-in feeling recently (${top.count} time${top.count === 1 ? "" : "s"}) — worth noticing what's contributing to it.`,
     });
   }
+
+  if (moodEntries.length > 0) {
+    const avgMood = Math.round(moodEntries.reduce((s, m) => s + m.moodScore, 0) / moodEntries.length);
+    insights.push({
+      id: "avg-mood",
+      text: `Your average logged mood is ${avgMood}/100 across ${moodEntries.length} check-in${moodEntries.length === 1 ? "" : "s"}.`,
+    });
+  }
+
   insights.push({
-    id: "crisis-free",
+    id: "crisis-status",
     text:
       crisisFlagged === 0
-        ? "No crisis signals in your recent history — keep up whatever's been working for you."
-        : `${crisisFlagged} moment${crisisFlagged === 1 ? "" : "s"} were flagged for extra support recently. Check the Crisis Alerts on your dashboard for details.`,
+        ? "No crisis signals detected in your recent history — keep up whatever's been supporting your peace."
+        : `${crisisFlagged} moment${crisisFlagged === 1 ? "" : "s"} were flagged for extra care recently. Consider scheduling a quiet moment or reviewing supportive exercises.`,
   });
+
   insights.push({
     id: "consistency",
-    text: "Regular check-ins, even short ones, tend to make trends easier to spot over time.",
+    text: `${totalEntries} total emotional moments logged. Regular check-ins make subtle emotional shifts easier to spot.`,
   });
+
   return insights;
 }

@@ -246,6 +246,15 @@ export function generatePDFReport({
   y += 3;
 
   const trendTableRows = trend.map((point) => {
+    if (point.score === null) {
+      return [
+        format(point.date, "EEEE, MMMM d, yyyy"),
+        point.label,
+        "--",
+        "No check-ins recorded",
+      ];
+    }
+
     let rating = "Steady";
     if (point.score >= 80) rating = "High Resilience / Calm";
     else if (point.score >= 60) rating = "Steady / Balanced";
@@ -299,12 +308,15 @@ export function generatePDFReport({
 
   y += 3;
 
-  const sessionTableRows = sessions.map((s) => [
-    format(s.date, "MMM d, yyyy"),
-    `${s.durationMinutes} min`,
-    s.dominantEmotion,
-    s.blurb,
-  ]);
+  const sessionTableRows =
+    sessions.length > 0
+      ? sessions.map((s) => [
+          format(s.date, "MMM d, yyyy"),
+          `${s.durationMinutes} min`,
+          s.dominantEmotion,
+          s.blurb,
+        ])
+      : [["--", "--", "Neutral", "No therapy sessions logged yet for this period."]];
 
   autoTable(doc, {
     startY: y,

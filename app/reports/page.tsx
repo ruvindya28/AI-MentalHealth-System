@@ -16,6 +16,8 @@ import {
   getTrend,
   getSessionSummaries,
   getWellnessInsights,
+  type MoodLogItem,
+  type RawTherapySessionItem,
 } from "@/lib/mock-report-data";
 import { EmotionDistributionBars } from "@/components/charts/emotion-distribution-bars";
 import { TrendSparkline } from "@/components/charts/trend-sparkline";
@@ -26,16 +28,31 @@ import { generatePDFReport } from "@/lib/reports/pdf-report";
 export default function ReportsPage() {
   const { user } = useAuth();
   const [entries, setEntries] = useState<EmotionLogEntry[]>([]);
+  const [moodEntries, setMoodEntries] = useState<MoodLogItem[]>([]);
+  const [rawSessions, setRawSessions] = useState<RawTherapySessionItem[]>([]);
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
 
-  const fetchEntries = async () => {
+  const fetchReportData = async () => {
     try {
-      const res = await fetch("/api/therapy", { cache: "no-store" });
-      if (!res.ok) return;
-      const { sessions } = (await res.json()) as {
-        sessions: Parameters<typeof sessionsToEmotionLog>[0];
-      };
-      setEntries(sessionsToEmotionLog(sessions));
+      const [therapyRes, moodRes] = await Promise.all([
+        fetch("/api/therapy", { cache: "no-store" }),
+        fetch("/api/mood", { cache: "no-store" }),
+      ]);
+
+      if (therapyRes.ok) {
+        const { sessions } = (await therapyRes.json()) as {
+          sessions: Parameters<typeof sessionsToEmotionLog>[0];
+        };
+        setRawSessions((sessions as unknown as RawTherapySessionItem[]) || []);
+        setEntries(sessionsToEmotionLog(sessions || []));
+      }
+
+      if (moodRes.ok) {
+        const { entries: moods } = (await moodRes.json()) as {
+          entries: MoodLogItem[];
+        };
+        setMoodEntries(moods || []);
+      }
     } catch (error) {
       console.error("Error loading report data:", error);
     }
@@ -44,13 +61,13 @@ export default function ReportsPage() {
   useEffect(() => {
     // Initial data fetch from the server, not a derivable value.
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    fetchEntries();
+    fetchReportData();
   }, []);
 
   const distribution = useMemo(() => getEmotionDistribution(entries), [entries]);
-  const trend = useMemo(() => getTrend(entries), [entries]);
-  const sessions = useMemo(() => getSessionSummaries(entries), [entries]);
-  const insights = useMemo(() => getWellnessInsights(entries), [entries]);
+  const trend = useMemo(() => getTrend(entries, moodEntries, 7), [entries, moodEntries]);
+  const sessions = useMemo(() => getSessionSummaries(rawSessions, entries), [rawSessions, entries]);
+  const insights = useMemo(() => getWellnessInsights(entries, moodEntries), [entries, moodEntries]);
 
   const handleDownload = () => {
     setIsGeneratingPdf(true);
@@ -139,7 +156,9 @@ export default function ReportsPage() {
                 <TrendingUp className="w-4 h-4 text-primary" />
                 <CardTitle className="font-heading">Emotional Trend</CardTitle>
               </div>
-              <CardDescription>Crisis-free share of check-ins over the last 7 days</CardDescription>
+              <CardDescription>
+                Calculated from your daily mood check-ins and session moments over the last 7 days
+              </CardDescription>
             </CardHeader>
             <CardContent>
               <TrendSparkline points={trend} />
@@ -163,34 +182,46 @@ export default function ReportsPage() {
               <MessageSquareText className="w-4 h-4 text-primary" />
               <CardTitle className="font-heading">Session Summaries</CardTitle>
             </div>
-            <CardDescription>A recap of recent conversations</CardDescription>
+            <CardDescription>A recap of your recent therapy conversations</CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
-            {sessions.map((session) => (
-              <div key={session.id} className="flex flex-col sm:flex-row sm:items-center gap-3 p-4 rounded-2xl bg-muted/30">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10">
-                  <FileText className="w-4.5 h-4.5 text-primary" />
+            {sessions.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-8 text-center gap-2">
+                <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                  <MessageSquareText className="w-5 h-5 text-primary" />
                 </div>
-                <div className="flex-1 space-y-1">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <p className="text-sm font-medium">{format(session.date, "MMM d, yyyy")}</p>
-                    <span className="text-xs text-muted-foreground">{session.durationMinutes} min</span>
-                    <Badge
-                      variant="outline"
-                      className={cn(
-                        "text-xs border",
-                        EMOTION_COLORS[session.dominantEmotion].bg,
-                        EMOTION_COLORS[session.dominantEmotion].border
-                      )}
-                    >
-                      <span className={cn("h-1.5 w-1.5 rounded-full", EMOTION_COLORS[session.dominantEmotion].dot)} />
-                      {session.dominantEmotion}
-                    </Badge>
-                  </div>
-                  <p className="text-sm text-muted-foreground">{session.blurb}</p>
-                </div>
+                <p className="text-sm font-medium text-foreground">No therapy conversations yet</p>
+                <p className="text-xs text-muted-foreground max-w-sm">
+                  Start a therapy chat or voice call to see real conversation summaries and emotion insights here.
+                </p>
               </div>
-            ))}
+            ) : (
+              sessions.map((session) => (
+                <div key={session.id} className="flex flex-col sm:flex-row sm:items-center gap-3 p-4 rounded-2xl bg-muted/30">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10">
+                    <FileText className="w-4.5 h-4.5 text-primary" />
+                  </div>
+                  <div className="flex-1 space-y-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="text-sm font-medium">{format(session.date, "MMM d, yyyy")}</p>
+                      <span className="text-xs text-muted-foreground">{session.durationMinutes} min</span>
+                      <Badge
+                        variant="outline"
+                        className={cn(
+                          "text-xs border",
+                          EMOTION_COLORS[session.dominantEmotion].bg,
+                          EMOTION_COLORS[session.dominantEmotion].border
+                        )}
+                      >
+                        <span className={cn("h-1.5 w-1.5 rounded-full", EMOTION_COLORS[session.dominantEmotion].dot)} />
+                        {session.dominantEmotion}
+                      </Badge>
+                    </div>
+                    <p className="text-sm text-muted-foreground">{session.blurb}</p>
+                  </div>
+                </div>
+              ))
+            )}
           </CardContent>
         </Card>
       </Container>
