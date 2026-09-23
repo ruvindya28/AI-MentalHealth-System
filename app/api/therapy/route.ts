@@ -5,13 +5,50 @@ import { getSessionUserId } from "@/lib/auth/session";
 import { createSessionSchema } from "@/lib/validation/therapy";
 import { jsonError, zodErrorResponse } from "@/lib/http/errors";
 
-export async function GET() {
+export async function GET(request: Request) {
     const userId = await getSessionUserId();
     if (!userId) return jsonError("Not authenticated", 401);
 
     await connectToDatabase();
 
-    const sessions = await TherapySession.find({ userId }).sort({ createdAt: -1 }).limit(100);
+    const { searchParams } = new URL(request.url);
+    const wantFull = searchParams.get("full") === "true";
+
+    const rawSessions = await TherapySession.find({ userId })
+        .sort({ createdAt: -1 })
+        .limit(100)
+        .lean();
+
+    if (wantFull) {
+        // Full payload — callers like History and Reports need message content
+        return NextResponse.json({ sessions: rawSessions }, { status: 200 });
+    }
+
+    // Slim projection for sidebar — avoids shipping full message arrays
+    const sessions = rawSessions.map((s) => {
+        const SEVERITY: Record<string, number> = { none: 0, low: 1, medium: 2, high: 3 };
+        let crisisLevel = "none";
+        let preview = "";
+        for (const m of s.messages ?? []) {
+            if (m.role === "user" && !preview) {
+                preview = (m.content ?? "").slice(0, 80);
+            }
+            const lvl = (m.crisisLevel as string) ?? "none";
+            if ((SEVERITY[lvl] ?? 0) > (SEVERITY[crisisLevel] ?? 0)) {
+                crisisLevel = lvl;
+            }
+        }
+        return {
+            _id: s._id,
+            type: s.type,
+            createdAt: s.createdAt,
+            durationSeconds: s.durationSeconds ?? 0,
+            dominantEmotion: s.dominantEmotion ?? null,
+            crisisLevel,
+            preview,
+            messages: [],
+        };
+    });
 
     return NextResponse.json({ sessions }, { status: 200 });
 }

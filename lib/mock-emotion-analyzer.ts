@@ -10,7 +10,8 @@ export type Emotion =
   | "Angry"
   | "Hopeful"
   | "Calm"
-  | "Neutral";
+  | "Neutral"
+  | "Unknown";
 
 export interface EmotionAnalysis {
   emotion: Emotion;
@@ -26,6 +27,19 @@ const CRISIS_KEYWORDS: Record<Exclude<CrisisLevel, "none">, string[]> = {
     "want to die",
     "no reason to live",
     "better off dead",
+    "kill someone",
+    "kill somebody",
+    "kill people",
+    "want to kill",
+    "going to kill",
+    "gonna kill",
+    "murder someone",
+    "murder somebody",
+    "shoot someone",
+    "hurt someone",
+    "harm someone",
+    "harm others",
+    "stab someone",
   ],
   medium: [
     "hopeless",
@@ -39,13 +53,28 @@ const CRISIS_KEYWORDS: Record<Exclude<CrisisLevel, "none">, string[]> = {
   low: ["overwhelmed", "panic attack", "can't cope", "cant cope", "breaking down"],
 };
 
-const EMOTION_KEYWORDS: Record<Emotion, string[]> = {
+const VIOLENCE_KEYWORDS = [
+  "kill someone",
+  "kill somebody",
+  "kill people",
+  "want to kill",
+  "going to kill",
+  "gonna kill",
+  "murder",
+  "shoot someone",
+  "hurt someone",
+  "harm someone",
+  "harm others",
+  "stab someone",
+];
+
+const EMOTION_KEYWORDS: Record<Exclude<Emotion, "Unknown">, string[]> = {
   Anxious: ["anxious", "anxiety", "nervous", "worried", "panic", "stressed", "tense"],
   Sad: ["sad", "down", "depressed", "crying", "lonely", "empty", "hurt"],
   Angry: ["angry", "furious", "frustrated", "mad", "irritated", "annoyed"],
-  Hopeful: ["hopeful", "better", "improving", "grateful", "excited", "proud"],
-  Calm: ["calm", "relaxed", "peaceful", "fine", "okay", "good", "content"],
-  Neutral: [],
+  Hopeful: ["hopeful", "better", "improving", "grateful", "excited", "proud", "great"],
+  Calm: ["calm", "relaxed", "peaceful", "fine", "okay", "good", "well", "content"],
+  Neutral: ["fine", "routine", "everyday", "regular", "normal", "usual"],
 };
 
 export function analyzeText(text: string): EmotionAnalysis {
@@ -59,10 +88,22 @@ export function analyzeText(text: string): EmotionAnalysis {
     }
   }
 
-  let bestEmotion: Emotion = "Neutral";
+  const isViolence = VIOLENCE_KEYWORDS.some((kw) => lower.includes(kw));
+  if (isViolence && crisisLevel === "none") {
+    crisisLevel = "high";
+  }
+
+  // Check for degenerate / gibberish text (e.g., 'ssssss', single repeating letters)
+  const alphaChars = lower.replace(/[^a-z]/g, "");
+  const uniqueChars = new Set(alphaChars);
+  if (alphaChars.length >= 3 && uniqueChars.size === 1) {
+    return { emotion: "Unknown", confidence: 0, crisisLevel };
+  }
+
+  let bestEmotion: Emotion = "Unknown";
   let bestScore = 0;
   for (const [emotion, keywords] of Object.entries(EMOTION_KEYWORDS) as [
-    Emotion,
+    Exclude<Emotion, "Unknown">,
     string[],
   ][]) {
     const matches = keywords.filter((kw) => lower.includes(kw)).length;
@@ -72,8 +113,33 @@ export function analyzeText(text: string): EmotionAnalysis {
     }
   }
 
-  const confidence = bestScore > 0 ? Math.min(60 + bestScore * 15, 96) : 55;
+  // Polarity constraint: positive emotions ("Hopeful", "Calm", "Neutral") must NEVER
+  // be returned if a crisis or violent threat is detected.
+  if (crisisLevel === "high" || crisisLevel === "medium") {
+    if (isViolence || lower.includes("kill") || lower.includes("murder")) {
+      bestEmotion = "Angry";
+      bestScore = Math.max(bestScore, 2);
+    } else if (
+      bestEmotion === "Hopeful" ||
+      bestEmotion === "Calm" ||
+      bestEmotion === "Neutral" ||
+      bestEmotion === "Unknown"
+    ) {
+      bestEmotion = "Sad";
+      bestScore = Math.max(bestScore, 2);
+    }
+  }
 
+  // If no emotional keyword matched, check if a crisis was detected
+  if (bestScore === 0) {
+    if (crisisLevel !== "none") {
+      const emotion = isViolence ? "Angry" : "Sad";
+      return { emotion, confidence: crisisLevel === "high" ? 95 : 85, crisisLevel };
+    }
+    return { emotion: "Unknown", confidence: 0, crisisLevel };
+  }
+
+  const confidence = Math.min(60 + bestScore * 15, 96);
   return { emotion: bestEmotion, confidence, crisisLevel };
 }
 
@@ -86,6 +152,7 @@ export const EMOTION_ORDER: Emotion[] = [
   "Anxious",
   "Sad",
   "Angry",
+  "Unknown",
 ];
 
 export const EMOTION_COLORS: Record<Emotion, { text: string; bg: string; border: string; bar: string; dot: string }> = {
@@ -95,6 +162,7 @@ export const EMOTION_COLORS: Record<Emotion, { text: string; bg: string; border:
   Anxious: { text: "text-foreground", bg: "bg-emotion-anxious/10", border: "border-emotion-anxious/30", bar: "bg-emotion-anxious", dot: "bg-emotion-anxious" },
   Sad: { text: "text-foreground", bg: "bg-emotion-sad/10", border: "border-emotion-sad/30", bar: "bg-emotion-sad", dot: "bg-emotion-sad" },
   Angry: { text: "text-foreground", bg: "bg-emotion-angry/10", border: "border-emotion-angry/30", bar: "bg-emotion-angry", dot: "bg-emotion-angry" },
+  Unknown: { text: "text-muted-foreground", bg: "bg-muted/40", border: "border-muted/50", bar: "bg-muted-foreground/40", dot: "bg-muted-foreground" },
 };
 
 export const CRISIS_COLORS: Record<CrisisLevel, { text: string; bg: string; ring: string; label: string }> = {
@@ -103,3 +171,4 @@ export const CRISIS_COLORS: Record<CrisisLevel, { text: string; bg: string; ring
   medium: { text: "text-crisis-medium", bg: "bg-crisis-medium", ring: "ring-crisis-medium/30", label: "Medium" },
   high: { text: "text-crisis-high", bg: "bg-crisis-high", ring: "ring-crisis-high/30", label: "High" },
 };
+

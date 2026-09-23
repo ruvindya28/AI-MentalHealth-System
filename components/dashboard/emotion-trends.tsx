@@ -15,9 +15,10 @@ import type { EmotionLogEntry } from "@/lib/emotion-log";
 
 interface EmotionTrendsProps {
   entries: EmotionLogEntry[];
+  className?: string;
 }
 
-export function EmotionTrends({ entries }: EmotionTrendsProps) {
+export function EmotionTrends({ entries, className }: EmotionTrendsProps) {
   const counts = entries.reduce<Partial<Record<Emotion, number>>>(
     (acc, entry) => {
       acc[entry.emotion] = (acc[entry.emotion] ?? 0) + 1;
@@ -35,8 +36,8 @@ export function EmotionTrends({ entries }: EmotionTrendsProps) {
   const maxCount = rows.length > 0 ? Math.max(...rows.map((r) => r.count)) : 0;
 
   return (
-    <Card className="border-primary/10 h-full">
-      <CardHeader>
+    <Card className={cn("border-primary/10 h-full flex flex-col max-h-[420px]", className)}>
+      <CardHeader className="shrink-0 pb-3">
         <div className="flex items-center gap-2">
           <CardTitle>Emotion Trends</CardTitle>
           <Badge variant="secondary" className="text-xs">
@@ -47,7 +48,7 @@ export function EmotionTrends({ entries }: EmotionTrendsProps) {
           Detected across your conversations this session
         </CardDescription>
       </CardHeader>
-      <CardContent>
+      <CardContent className="flex-1 overflow-y-auto pr-2">
         {rows.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-8 text-center gap-3">
             <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">

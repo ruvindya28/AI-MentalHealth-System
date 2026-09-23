@@ -7,7 +7,7 @@ const messageSchema = new Schema(
         timestamp: { type: Date, required: true, default: Date.now },
         emotion: {
             type: String,
-            enum: ["Anxious", "Sad", "Angry", "Hopeful", "Calm", "Neutral"],
+            enum: ["Anxious", "Sad", "Angry", "Hopeful", "Calm", "Neutral", "Unknown"],
         },
         confidence: { type: Number, min: 0, max: 100 },
         crisisLevel: { type: String, enum: ["none", "low", "medium", "high"] },
@@ -21,6 +21,11 @@ const therapySessionSchema = new Schema(
         userId: { type: Schema.Types.ObjectId, ref: "User", required: true, index: true },
         type: { type: String, enum: ["chat", "voice"], required: true, default: "chat" },
         messages: { type: [messageSchema], default: [] },
+        durationSeconds: { type: Number, min: 0, default: 0 },
+        dominantEmotion: {
+            type: String,
+            enum: ["Anxious", "Sad", "Angry", "Hopeful", "Calm", "Neutral", "Unknown"],
+        },
     },
     { timestamps: true }
 );
@@ -29,5 +34,10 @@ export type TherapySessionDocument = InferSchemaType<typeof therapySessionSchema
     _id: Schema.Types.ObjectId;
 };
 
+if (process.env.NODE_ENV === "development" && models.TherapySession) {
+    delete (models as Record<string, unknown>).TherapySession;
+}
+
 export const TherapySession: Model<TherapySessionDocument> =
-    models.TherapySession ?? model<TherapySessionDocument>("TherapySession", therapySessionSchema);
+    (models.TherapySession as Model<TherapySessionDocument>) ??
+    model<TherapySessionDocument>("TherapySession", therapySessionSchema);

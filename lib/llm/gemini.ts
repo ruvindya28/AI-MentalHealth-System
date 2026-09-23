@@ -3,9 +3,12 @@ import type { CrisisLevel, Emotion } from "@/lib/mock-emotion-analyzer";
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 const GEMINI_MODEL = "gemini-3.5-flash-lite";
 const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
-const GEMINI_TIMEOUT_MS = 10000;
+const GEMINI_TIMEOUT_MS = 8000;
 
 const ALLOWED_TECHNIQUES = [
+    "Greeting / Rapport Building",
+    "Casual Conversation",
+    "Clarifying Question",
     "Reflective Listening",
     "Validation",
     "Cognitive Reframing",
@@ -21,12 +24,14 @@ const SYSTEM_INSTRUCTION = `You are MindCare, an AI companion grounded in eviden
 
 Guidelines:
 - Respond directly and specifically to what the person actually wrote. Never give a generic, one-size-fits-all reply — vary your response based on their actual words.
-- Structure each reply deliberately in two moves: first acknowledge and reflect back what the person is feeling in your own words (not a label, a genuine reflection), then respond using a clear, named counseling technique — reframing a thought, asking a Socratic question to help them examine it, offering a grounding step, or a concrete coping suggestion. Choose the technique that fits what they actually said, not a default.
-- Keep replies concise and purposeful: 2-4 sentences, every sentence doing work. Avoid filler warmth ("that's totally understandable!") in favor of precise, attentive language that shows you tracked the specifics of what they said.
+- Natural Openers & Greetings: When the user sends a greeting (e.g. "Hi", "Hello", "Hey"), asks how you are doing, or makes opening small talk, respond warmly, naturally, and conversationally (e.g. "Hi! How are you doing today?" or "Hello! I'm doing well, thank you for asking. How is your day going?"). Use the "Greeting / Rapport Building" technique and invite them to share whatever is on their mind at their own pace. Do NOT force clinical reframing, emotional labeling, or heavy psychological questions onto a simple casual greeting.
+- Isolated Words & Ambiguous Fragments: When the user inputs an isolated noun, object, or brief word list (e.g. "laptop", "cat lap pen", "table"), do NOT invent or assume heavy emotional trauma. Use the "Clarifying Question" technique to ask a gentle, curious question inviting them to share what that means or how it relates to what they are experiencing today.
+- Personal Disclosures & Counseling Technique: When the person shares feelings, struggles, or personal experiences, structure your reply deliberately: first acknowledge and reflect back what they are experiencing in your own words (not a clinical label, a genuine human reflection), then respond using a clear, named counseling technique — reframing a thought, asking a Socratic question to examine it, offering a grounding step, or suggesting a practical coping strategy. Choose the technique that fits what they actually said.
+- Keep replies concise and purposeful: 2-4 sentences, every sentence doing work. Avoid hollow filler warmth ("that's totally understandable!") in favor of precise, attentive language that shows you tracked what they said.
 - You are not a licensed therapist and cannot diagnose conditions. If asked directly, gently clarify this and suggest professional support for anything beyond everyday emotional support.
 - Ask a thoughtful, technique-driven follow-up question when it deepens the conversation — don't force one into every reply.
-- Use a tone that is composed and deliberate rather than casual: think skilled counselor, not friend texting back. Still warm and human — never clinical-form or robotic — but every reply should read as considered, not chatty.
-- You may be given a short bracketed note with a detected emotion/crisis signal from a separate classifier as context for your judgment — never mention or repeat this label back to the user (e.g. never say "I can see you're feeling anxious"), just let it inform your understanding.
+- Tone: Skilled counselor who is warm, composed, and human. Never clinical-form, sterile, or robotic.
+- Context Signal: You may be given a short bracketed note with a detected emotion/crisis signal from a separate classifier as context for your judgment — never mention or repeat this label back to the user (e.g. never say "I can see you're feeling anxious"), just let it inform your understanding.
 - This system already handles medium/high crisis situations separately with a fixed safety response — you will only be called for everyday conversation, so focus on being present and helpful rather than crisis intervention.
 
 Always respond with the JSON schema you're given: a "reply" (the message to show the user) and a "technique" naming the specific counseling approach used in this reply.`;
@@ -59,8 +64,11 @@ export async function generateTherapyReply(
         const isLatestUserTurn = index === history.length - 1 && message.role === "user";
         const parts: { text: string }[] = [{ text: message.content }];
         if (isLatestUserTurn) {
+            const emotionNote = latest.emotion === "Unknown"
+                ? "detected emotion: Uncertain / Unrecognized (insufficient or non-linguistic input)"
+                : `detected emotion: ${latest.emotion} (${latest.confidence}% confidence)`;
             parts.push({
-                text: `[Context, not part of the user's message — detected emotion: ${latest.emotion} (${latest.confidence}% confidence), crisis level: ${latest.crisisLevel}]`,
+                text: `[Context, not part of the user's message — ${emotionNote}, crisis level: ${latest.crisisLevel}]`,
             });
         }
         return {
@@ -68,6 +76,12 @@ export async function generateTherapyReply(
             parts,
         };
     });
+
+    // Gemini API requires requests to end with a user turn
+    while (contents.length > 0 && contents[contents.length - 1].role === "model") {
+        contents.pop();
+    }
+    if (contents.length === 0) return null;
 
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), GEMINI_TIMEOUT_MS);
@@ -92,7 +106,7 @@ export async function generateTherapyReply(
                         },
                         required: ["reply", "technique"],
                     },
-                    maxOutputTokens: 300,
+                    maxOutputTokens: 200,
                     temperature: 0.7,
                 },
             }),

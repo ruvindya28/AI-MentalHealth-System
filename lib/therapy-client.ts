@@ -63,18 +63,19 @@ export async function persistTherapyMessage(
 
 export async function fetchTherapyReply(
     sessionId: string,
-    analysis: EmotionAnalysis
+    analysis: EmotionAnalysis,
+    userMessage?: string
 ): Promise<CannedResponse> {
     try {
         const res = await fetch(`/api/therapy/${sessionId}/reply`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(analysis),
+            body: JSON.stringify({ ...analysis, userMessage }),
         });
         if (!res.ok) throw new Error("Reply request failed");
         return (await res.json()) as CannedResponse;
     } catch (error) {
         console.error("Error generating reply, falling back to local heuristic:", error);
-        return generateReply(analysis);
+        return generateReply(analysis, userMessage);
     }
 }

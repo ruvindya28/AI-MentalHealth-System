@@ -29,7 +29,7 @@ export function sessionsToEmotionLog(sessions: RawSession[]): EmotionLogEntry[] 
     const entries: EmotionLogEntry[] = [];
 
     for (const session of sessions) {
-        session.messages.forEach((message, index) => {
+        (session.messages ?? []).forEach((message, index) => {
             if (!message.emotion) return;
             entries.push({
                 id: `${session._id}-${index}`,

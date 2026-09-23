@@ -5,9 +5,9 @@ export const MAX_RECORDING_MS = 60_000;
 // is unambiguously supported by Gemini's documented audio formats. Falls
 // through to whatever the browser actually supports.
 const MIME_PREFERENCE = [
-    "audio/mp4",
     "audio/webm;codecs=opus",
     "audio/webm",
+    "audio/mp4",
     "audio/ogg;codecs=opus",
 ];
 

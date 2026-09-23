@@ -24,6 +24,7 @@ import {
   type Emotion,
   type CrisisLevel,
 } from "@/lib/mock-emotion-analyzer";
+import { resolveSessionMood } from "@/lib/voice/call-history";
 
 type SessionType = "chat" | "voice";
 
@@ -42,8 +43,8 @@ function SessionCardBody({ session }: { session: ConversationSession }) {
   return (
     <CardContent className="p-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="font-medium">{session.title}</p>
-        <span className="text-xs text-muted-foreground">
+        <p className="font-medium line-clamp-1">{session.title}</p>
+        <span className="text-xs text-muted-foreground shrink-0">
           {format(session.date, "h:mm a")} · {session.durationMinutes} min
           {session.type === "chat" ? ` · ${session.messageCount} messages` : ""}
         </span>
@@ -84,22 +85,17 @@ interface RawSession {
   type: SessionType;
   messages: RawMessage[];
   createdAt: string;
+  durationSeconds?: number;
+  dominantEmotion?: Emotion;
 }
 
 const CRISIS_SEVERITY: Record<CrisisLevel, number> = { none: 0, low: 1, medium: 2, high: 3 };
 
 function summarizeSession(session: RawSession): ConversationSession {
-  const { messages } = session;
+  const messages = session.messages ?? [];
 
-  const emotionCounts = messages.reduce<Partial<Record<Emotion, number>>>((acc, m) => {
-    if (m.emotion) acc[m.emotion] = (acc[m.emotion] ?? 0) + 1;
-    return acc;
-  }, {});
   const dominantEmotion =
-    (Object.entries(emotionCounts) as [Emotion, number][]).reduce<[Emotion, number] | null>(
-      (best, entry) => (!best || entry[1] > best[1] ? entry : best),
-      null
-    )?.[0] ?? "Neutral";
+    session.dominantEmotion ?? resolveSessionMood(messages);
 
   const crisisLevel = messages.reduce<CrisisLevel>((worst, m) => {
     if (m.crisisLevel && CRISIS_SEVERITY[m.crisisLevel] > CRISIS_SEVERITY[worst]) {
@@ -110,7 +106,10 @@ function summarizeSession(session: RawSession): ConversationSession {
 
   const first = messages[0] ? new Date(messages[0].timestamp) : new Date(session.createdAt);
   const last = messages.length > 0 ? new Date(messages[messages.length - 1].timestamp) : first;
-  const durationMinutes = Math.max(1, Math.round((last.getTime() - first.getTime()) / 60000));
+  const durationMinutes =
+    typeof session.durationSeconds === "number" && session.durationSeconds > 0
+      ? Math.max(1, Math.round(session.durationSeconds / 60))
+      : Math.max(1, Math.round((last.getTime() - first.getTime()) / 60000));
 
   const firstUserMessage = messages.find((m) => m.role === "user")?.content;
   const title = firstUserMessage
@@ -140,7 +139,7 @@ export default function HistoryPage() {
 
   const fetchSessions = async () => {
     try {
-      const res = await fetch("/api/therapy", { cache: "no-store" });
+      const res = await fetch("/api/therapy?full=true", { cache: "no-store" });
       if (!res.ok) return;
       const { sessions } = (await res.json()) as { sessions: RawSession[] };
       setAllSessions(sessions.map(summarizeSession));
@@ -235,45 +234,41 @@ export default function HistoryPage() {
             </CardContent>
           </Card>
         ) : (
-          <div className="relative space-y-8 before:absolute before:left-[19px] before:top-2 before:bottom-2 before:w-px before:bg-border sm:before:left-[23px]">
-            {groups.map((group) => (
-              <div key={group.date.toISOString()} className="space-y-3">
-                <p className="pl-11 sm:pl-13 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                  {format(group.date, "EEEE, MMMM d")}
-                </p>
-                <div className="space-y-3">
-                  {group.sessions.map((session) => (
-                    <motion.div
-                      key={session.id}
-                      initial={{ opacity: 0, y: 8 }}
-                      whileInView={{ opacity: 1, y: 0 }}
-                      viewport={{ once: true }}
-                      transition={{ duration: 0.35 }}
-                      className="relative flex items-start gap-4 pl-1"
-                    >
-                      <div className="relative z-10 flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10 sm:h-12 sm:w-12">
-                        {session.type === "voice" ? (
-                          <Phone className="w-4.5 h-4.5 text-primary" />
-                        ) : (
-                          <MessageCircle className="w-4.5 h-4.5 text-primary" />
-                        )}
-                      </div>
-                      {session.type === "chat" ? (
+          <div className="max-h-[600px] sm:max-h-[680px] overflow-y-auto pr-3 -mr-1 rounded-xl">
+            <div className="relative space-y-8 before:absolute before:left-[19px] before:top-2 before:bottom-2 before:w-px before:bg-border sm:before:left-[23px] pb-4">
+              {groups.map((group) => (
+                <div key={group.date.toISOString()} className="space-y-3">
+                  <p className="pl-11 sm:pl-13 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    {format(group.date, "EEEE, MMMM d")}
+                  </p>
+                  <div className="space-y-3">
+                    {group.sessions.map((session) => (
+                      <motion.div
+                        key={session.id}
+                        initial={{ opacity: 0, y: 8 }}
+                        whileInView={{ opacity: 1, y: 0 }}
+                        viewport={{ once: true }}
+                        transition={{ duration: 0.35 }}
+                        className="relative flex items-start gap-4 pl-1"
+                      >
+                        <div className="relative z-10 flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10 sm:h-12 sm:w-12">
+                          {session.type === "voice" ? (
+                            <Phone className="w-4.5 h-4.5 text-primary" />
+                          ) : (
+                            <MessageCircle className="w-4.5 h-4.5 text-primary" />
+                          )}
+                        </div>
                         <Link href={`/therapy/${session.id}`} className="flex-1">
-                          <Card className="hover:border-primary/40 transition-colors">
+                          <Card className="hover:border-primary/40 transition-colors cursor-pointer">
                             <SessionCardBody session={session} />
                           </Card>
                         </Link>
-                      ) : (
-                        <Card className="flex-1">
-                          <SessionCardBody session={session} />
-                        </Card>
-                      )}
-                    </motion.div>
-                  ))}
+                      </motion.div>
+                    ))}
+                  </div>
                 </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
         )}
       </Container>

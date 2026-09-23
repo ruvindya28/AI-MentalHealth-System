@@ -7,7 +7,15 @@ import { analyzeText as analyzeTextFallback, type CrisisLevel, type Emotion } fr
 const ML_SERVICE_URL = process.env.ML_SERVICE_URL ?? "http://127.0.0.1:8000";
 const ML_SERVICE_TIMEOUT_MS = 5000;
 
-const KNOWN_EMOTIONS: readonly Emotion[] = ["Anxious", "Sad", "Angry", "Hopeful", "Calm", "Neutral"];
+const KNOWN_EMOTIONS: readonly Emotion[] = [
+    "Anxious",
+    "Sad",
+    "Angry",
+    "Hopeful",
+    "Calm",
+    "Neutral",
+    "Unknown",
+];
 
 interface MlServiceResponse {
     emotion: string;
@@ -15,12 +23,14 @@ interface MlServiceResponse {
     mentalHealthStatus: string;
     crisisFlag: boolean;
     keywordFlag: boolean;
+    analysisStatus?: string;
 }
 
 interface AnalysisResult {
     emotion: Emotion;
     confidence: number;
     crisisLevel: CrisisLevel;
+    analysisStatus?: string;
 }
 
 const ONGOING_CONCERN_STATUSES = new Set(["Depression", "Stress", "Bipolar", "Personality disorder"]);
@@ -49,12 +59,13 @@ async function callMlService(text: string): Promise<AnalysisResult | null> {
         const data = (await res.json()) as MlServiceResponse;
         const emotion = KNOWN_EMOTIONS.includes(data.emotion as Emotion)
             ? (data.emotion as Emotion)
-            : "Neutral";
+            : "Unknown";
 
         return {
             emotion,
             confidence: Math.round(data.emotionConfidence),
             crisisLevel: toCrisisLevel(data),
+            analysisStatus: data.analysisStatus ?? "ok",
         };
     } catch (error) {
         console.error("ML service call failed:", error);
@@ -74,9 +85,15 @@ export async function POST(request: Request) {
     const parsed = analyzeTextSchema.safeParse(body);
     if (!parsed.success) return zodErrorResponse(parsed.error);
 
-    const result = (await callMlService(parsed.data.text)) ?? {
-        ...analyzeTextFallback(parsed.data.text),
-    };
+    const mlResult = await callMlService(parsed.data.text);
+    if (mlResult && mlResult.emotion !== "Unknown") {
+        return NextResponse.json(mlResult, { status: 200 });
+    }
 
-    return NextResponse.json(result, { status: 200 });
+    const fallbackResult = analyzeTextFallback(parsed.data.text);
+    if (fallbackResult.emotion !== "Unknown" || !mlResult) {
+        return NextResponse.json(fallbackResult, { status: 200 });
+    }
+
+    return NextResponse.json(mlResult, { status: 200 });
 }

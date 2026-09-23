@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { getSessionUserId } from "@/lib/auth/session";
 import { synthesizeSchema } from "@/lib/validation/voice";
 import { jsonError, zodErrorResponse } from "@/lib/http/errors";
-import { synthesizeSpeech } from "@/lib/llm/gemini-voice";
+import { synthesizeSpeechDetailed } from "@/lib/llm/gemini-voice";
 import { pcmToWav } from "@/lib/audio/wav";
 
 export async function POST(request: Request) {
@@ -15,8 +15,14 @@ export async function POST(request: Request) {
     const parsed = synthesizeSchema.safeParse(body);
     if (!parsed.success) return zodErrorResponse(parsed.error);
 
-    const pcm = await synthesizeSpeech(parsed.data.text);
-    if (!pcm) return jsonError("Couldn't generate voice audio.", 502);
+    const res = await synthesizeSpeechDetailed(parsed.data.text);
+    if (!res.audio) {
+        if (res.isQuotaExceeded) {
+            return jsonError("Google Gemini free tier voice quota reached (10 requests/day). Falling back to Instant voice.", 429);
+        }
+        return jsonError("Couldn't generate voice audio.", 502);
+    }
+    const pcm = res.audio;
 
     const rateMatch = /rate=(\d+)/.exec(pcm.mimeType);
     if (!rateMatch) {

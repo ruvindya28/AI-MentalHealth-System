@@ -98,7 +98,7 @@ export default function DashboardPage() {
 
     const fetchTherapyData = async () => {
         try {
-            const res = await fetch("/api/therapy", { cache: "no-store" });
+            const res = await fetch("/api/therapy?full=true", { cache: "no-store" });
             if (!res.ok) return;
             const { sessions } = (await res.json()) as { sessions: RawTherapySession[] };
             setChatSessionCount(sessions.filter((s) => s.type === "chat").length);

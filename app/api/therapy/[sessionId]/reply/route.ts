@@ -7,6 +7,7 @@ import { generateReplySchema } from "@/lib/validation/therapy";
 import { jsonError, zodErrorResponse } from "@/lib/http/errors";
 import { generateReply as generateFallbackReply } from "@/lib/mock-therapist-responses";
 import { generateTherapyReply, type HistoryMessage } from "@/lib/llm/gemini";
+import { classifyIntent } from "@/lib/dialogue/intent";
 
 export async function POST(
     request: Request,
@@ -37,16 +38,30 @@ export async function POST(
     // response — never let the LLM improvise a crisis intervention.
     const isCrisis = analysis.crisisLevel === "medium" || analysis.crisisLevel === "high";
 
+    const userMessageText = parsed.data.userMessage || [...session.messages].reverse().find((m) => m.role === "user")?.content;
+
+    // Fast-path: Greetings, pleasantries, closures, and unknown/OOD words are answered instantly
+    // (sub-50ms) using the evidence-based dialogue engine, avoiding external LLM network latency.
+    const intent = userMessageText ? classifyIntent(userMessageText) : "disclosure";
+    const isDirectIntent =
+        analysis.emotion === "Neutral" &&
+        (intent === "greeting" || intent === "pleasantry" || intent === "closure");
     let reply: { text: string; technique: string };
-    if (isCrisis) {
-        reply = generateFallbackReply(analysis);
+    if (isCrisis || isDirectIntent) {
+        reply = generateFallbackReply(analysis, userMessageText);
     } else {
-        const history: HistoryMessage[] = session.messages.map((m) => ({
+        // For personal emotional disclosures, call Gemini with a lean sliding window
+        const history: HistoryMessage[] = session.messages.slice(-6).map((m) => ({
             role: m.role,
             content: m.content,
         }));
+        // Ensure history always ends with the user turn
+        const lastMsg = history[history.length - 1];
+        if ((!lastMsg || lastMsg.role !== "user") && userMessageText) {
+            history.push({ role: "user", content: userMessageText });
+        }
         const llmReply = await generateTherapyReply(history, analysis);
-        reply = llmReply ?? generateFallbackReply(analysis);
+        reply = llmReply ?? generateFallbackReply(analysis, userMessageText);
     }
 
     session.messages.push({

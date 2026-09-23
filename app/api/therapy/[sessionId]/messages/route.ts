@@ -29,7 +29,13 @@ export async function POST(
         return jsonError("Session not found", 404);
     }
 
-    session.messages.push({ ...parsed.data, timestamp: new Date() });
+    const messageData = { ...parsed.data, timestamp: new Date() };
+    if (messageData.role === "user" && messageData.emotion === "Unknown" && (messageData.crisisLevel === "high" || messageData.crisisLevel === "medium")) {
+        messageData.emotion = "Sad";
+        messageData.confidence = messageData.confidence || (messageData.crisisLevel === "high" ? 95 : 85);
+    }
+
+    session.messages.push(messageData);
     await session.save();
 
     return NextResponse.json({ session }, { status: 201 });

@@ -15,18 +15,19 @@ import type { EmotionLogEntry } from "@/lib/emotion-log";
 
 interface CrisisAlertsProps {
   entries: EmotionLogEntry[];
+  className?: string;
 }
 
-export function CrisisAlerts({ entries }: CrisisAlertsProps) {
+export function CrisisAlerts({ entries, className }: CrisisAlertsProps) {
   const flagged = entries.filter((entry) => entry.crisisLevel !== "none");
 
   return (
-    <Card className="border-primary/10 h-full">
-      <CardHeader>
+    <Card className={cn("border-primary/10 h-full flex flex-col max-h-[420px]", className)}>
+      <CardHeader className="shrink-0 pb-3">
         <CardTitle>Crisis Alerts</CardTitle>
         <CardDescription>Moments flagged for extra support</CardDescription>
       </CardHeader>
-      <CardContent>
+      <CardContent className="flex-1 overflow-y-auto pr-2">
         {flagged.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-8 text-center gap-3">
             <div className="w-10 h-10 rounded-full bg-success/10 flex items-center justify-center">

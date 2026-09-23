@@ -35,7 +35,7 @@ export default function ReportsPage() {
   const fetchReportData = async () => {
     try {
       const [therapyRes, moodRes] = await Promise.all([
-        fetch("/api/therapy", { cache: "no-store" }),
+        fetch("/api/therapy?full=true", { cache: "no-store" }),
         fetch("/api/mood", { cache: "no-store" }),
       ]);
 

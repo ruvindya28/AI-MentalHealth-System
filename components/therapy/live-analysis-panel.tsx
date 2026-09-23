@@ -55,10 +55,10 @@ export function LiveAnalysisPanel({
             <div className="flex items-center justify-between">
               <span className="flex items-center gap-2 text-lg font-semibold font-heading">
                 <span className={cn("h-2.5 w-2.5 rounded-full", EMOTION_COLORS[latestEmotion].dot)} />
-                {latestEmotion}
+                {latestEmotion === "Unknown" ? "Uncertain" : latestEmotion}
               </span>
               <span className="text-sm text-muted-foreground">
-                {latestConfidence}% confidence
+                {latestEmotion === "Unknown" ? "Needs clarification" : `${latestConfidence}% confidence`}
               </span>
             </div>
           ) : (
@@ -114,8 +114,8 @@ export function LiveAnalysisPanel({
         )}
 
         <p className="text-xs text-muted-foreground border-t pt-3">
-          This is a heuristic preview, not a clinical diagnosis. Full model
-          integration is in progress.
+          This is an assistive screening aid, not a clinical diagnosis. Full
+          crisis safeguards are active.
         </p>
       </CardContent>
     </Card>

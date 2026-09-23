@@ -4,6 +4,7 @@ import "./globals.css";
 import Header from "@/components/header";
 import { Providers } from "@/components/provider";
 import { Footer } from "@/components/footer";
+import { NavigationProgress } from "@/components/navigation-progress";
 import { getCurrentUser } from "@/lib/auth/current-user";
 
 const inter = Inter({
@@ -48,8 +49,9 @@ export default async function RootLayout({
       className={`${inter.variable} ${poppins.variable} ${nunito.variable} ${geistMono.variable}`}
       suppressHydrationWarning
     >
-      <body className="antialiased">
+      <body className="antialiased" suppressHydrationWarning>
         <Providers initialUser={initialUser}>
+          <NavigationProgress />
           <Header />
           {children}
           <Footer />
