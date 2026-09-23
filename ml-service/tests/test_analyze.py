@@ -130,3 +130,29 @@ def test_inference_engine_genuine_emotional_disclosures():
         assert res.emotionConfidence >= 25.0, f"Low confidence on '{statement}': {res.emotionConfidence}"
 
 
+def test_inference_engine_protective_and_positive_inputs():
+    # Protective family care must never be classified as Angry
+    family_cases = [
+        "i want to protect my family members",
+        "i want to protect my family",
+        "i want to keep my kids safe",
+        "i love my family and want to protect them",
+    ]
+    for text in family_cases:
+        res = engine.analyze(text)
+        assert res.emotion in {"Calm", "Hopeful"}, f"Expected Calm/Hopeful on '{text}', got {res.emotion}"
+        assert res.crisisFlag is False
+        assert res.emotion != "Angry"
+
+    # Peaceful and positive statements must not flip to Sad or trigger suicidal crisis
+    res_peace = engine.analyze("i feel peaceful and relaxed")
+    assert res_peace.emotion == "Calm"
+    assert res_peace.crisisFlag is False
+
+    res_happy = engine.analyze("i am so happy today")
+    assert res_happy.emotion == "Hopeful"
+    assert res_happy.crisisFlag is False
+    assert res_happy.crisisDetails.level == "none"
+
+
+

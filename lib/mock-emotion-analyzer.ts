@@ -88,9 +88,17 @@ export function analyzeText(text: string): EmotionAnalysis {
     }
   }
 
-  const isViolence = VIOLENCE_KEYWORDS.some((kw) => lower.includes(kw));
+  const isSelfHarm = lower.includes("myself") || lower.includes("oneself") || lower.includes("my own life") || lower.includes("end my life");
+  const isViolence = !isSelfHarm && VIOLENCE_KEYWORDS.some((kw) => lower.includes(kw));
   if (isViolence && crisisLevel === "none") {
     crisisLevel = "high";
+  }
+
+  // Protective family care is Calm, not Angry or violent
+  const isFamilyProtection = (lower.includes("protect") || lower.includes("safe")) &&
+    (lower.includes("family") || lower.includes("member") || lower.includes("child") || lower.includes("kid") || lower.includes("parent"));
+  if (isFamilyProtection && crisisLevel === "none") {
+    return { emotion: "Calm", confidence: 78, crisisLevel: "none" };
   }
 
   // Check for degenerate / gibberish text (e.g., 'ssssss', single repeating letters)

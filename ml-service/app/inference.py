@@ -24,6 +24,32 @@ from .schemas import (
     CrisisOutput,
 )
 
+FAMILY_PROTECTION_TERMS = {
+    "family", "member", "members", "child", "children", "kids", "kid",
+    "son", "daughter", "parents", "parent", "mom", "mother", "dad", "father",
+    "sister", "brother", "loved one", "loved ones", "wife", "husband", "partner"
+}
+PROTECTIVE_TERMS = {
+    "protect", "protecting", "safe", "keep safe", "care", "caring", "shield", "guard"
+}
+ANGER_LEXICON = {
+    "angry", "anger", "mad", "furious", "fury", "hate", "hating", "hateful",
+    "rage", "raging", "irritated", "irritating", "annoyed", "annoying",
+    "frustrated", "frustrating", "frustration", "pissed", "screaming",
+    "screamed", "yell", "yelling", "fuming", "hostile", "disgusted",
+    "bitter", "punch", "stupid", "idiot", "damn", "curse", "wrath"
+}
+CALM_LEXICON = {
+    "peaceful", "peace", "relaxed", "relaxing", "relax", "calm", "calming",
+    "serene", "tranquil", "chill", "chilling", "rested", "content", "safe",
+    "grounded", "soothing"
+}
+JOY_HOPE_LEXICON = {
+    "happy", "happiness", "joy", "joyful", "excited", "exciting", "glad",
+    "grateful", "thankful", "cheerful", "delighted", "optimistic", "blessed",
+    "hopeful", "better", "improving"
+}
+
 
 class ModelInferenceEngine:
     def __init__(self):
@@ -126,12 +152,17 @@ class ModelInferenceEngine:
 
         # An input is out-of-domain / non-affective if its semantic relevance to the
         # affective training distribution is below the threshold (e.g. isolated nouns, arbitrary objects),
-        # UNLESS the model has high confidence in a non-neutral emotion (e.g. "sad", "anxious"),
-        # an affective disclosure term is present, or a crisis keyword was matched.
+        words = set(cleaned.split())
+        is_family_protection = bool(
+            (words & PROTECTIVE_TERMS or "protect" in cleaned or "safe" in cleaned)
+            and (words & FAMILY_PROTECTION_TERMS or "family" in cleaned)
+        )
+
         has_strong_affective_signal = (
             keyword_flag
+            or is_family_protection
             or (raw_emotion_pred not in {"Neutral", "Unknown"} and emotion_confidence >= 45.0)
-            or any(w in cleaned.split() for w in {
+            or any(w in words for w in {
                 "sad", "depressed", "anxious", "angry", "suicide", "suicidal",
                 "crying", "down", "lonely", "hopeless", "furious", "panic", "worried",
                 "well", "good", "happy", "calm", "hopeful", "fine", "better", "great",
@@ -146,7 +177,31 @@ class ModelInferenceEngine:
             emotion_confidence = 0.0
             analysis_status = "uncertain"
         else:
-            if emotion_confidence < CONFIDENCE_THRESHOLD:
+            sorted_probs = np.sort(emo_probs)[::-1] if len(emo_probs) > 0 else np.array([])
+            margin = float((sorted_probs[0] - sorted_probs[1]) * 100) if len(sorted_probs) > 1 else 0.0
+
+            if is_family_protection:
+                # Loving care, protection of family/loved ones is Calm/Supportive composure, not hostility
+                emotion_pred = "Calm"
+                emotion_confidence = max(emotion_confidence, 75.0)
+                analysis_status = "ok"
+            elif any(w in words for w in CALM_LEXICON) and not any_crisis_keyword:
+                emotion_pred = "Calm"
+                emotion_confidence = max(emotion_confidence, 80.0)
+                analysis_status = "ok"
+            elif any(w in words for w in JOY_HOPE_LEXICON) and not any_crisis_keyword:
+                emotion_pred = "Hopeful"
+                emotion_confidence = max(emotion_confidence, 80.0)
+                analysis_status = "ok"
+            elif raw_emotion_pred == "Angry" and not any(w in words for w in ANGER_LEXICON):
+                # Anger requires explicit lexical evidence unless model has high confidence and strong margin
+                if emotion_confidence < 42.0 or margin < 12.0:
+                    emotion_pred = "Neutral" if emotion_confidence >= 25.0 else "Unknown"
+                    analysis_status = "ok" if emotion_pred != "Unknown" else "uncertain"
+                else:
+                    emotion_pred = raw_emotion_pred
+                    analysis_status = "ok"
+            elif emotion_confidence < CONFIDENCE_THRESHOLD:
                 emotion_pred = "Unknown"
                 emotion_confidence = 0.0
                 analysis_status = "uncertain"
@@ -166,6 +221,11 @@ class ModelInferenceEngine:
             mh_pred = "Unknown"
             mh_confidence = 0.0
 
+        # Safety override: Positive emotions (Hopeful, Calm) without any crisis keywords cannot be Suicidal
+        if mh_pred == "Suicidal" and not any_crisis_keyword and emotion_pred in {"Hopeful", "Calm"}:
+            mh_pred = "Normal"
+            mh_confidence = 85.0
+
         # 6. Crisis Determination
         crisis_level = compute_crisis_level(
             keyword_flag=any_crisis_keyword,
@@ -181,7 +241,7 @@ class ModelInferenceEngine:
         # A crisis (whether self-harm or violence/harm to others) is strictly incompatible
         # with positive affects ("Hopeful", "Calm"). Under bag-of-words modeling, words like
         # "want" in "I want to kill..." artifactually pull toward "Hopeful".
-        if crisis_flag or any_crisis_keyword or mh_pred == "Suicidal":
+        if crisis_flag or any_crisis_keyword:
             if violence_flag:
                 # Interpersonal violent threats are acute outward aggression / anger
                 emotion_pred = "Angry"

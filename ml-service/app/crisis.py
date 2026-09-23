@@ -36,6 +36,9 @@ def check_crisis_keywords(text: str) -> bool:
 def check_violence_keywords(text: str) -> bool:
     """Checks for explicit indicators of violent intent or harm to others."""
     lowered = text.lower()
+    # Explicit self-directed harm is self-harm crisis, not interpersonal violence
+    if any(s in lowered for s in ["myself", "oneself", "my own life", "end my life"]):
+        return False
     return any(kw in lowered for kw in VIOLENCE_KEYWORDS)
 
 
@@ -55,7 +58,11 @@ def compute_crisis_level(
     if keyword_flag:
         return "high"
     if mental_health_status == "Suicidal":
-        return "medium"
+        # Statistical Suicidal status only elevates to medium crisis if accompanied by negative distress (Sad/Anxious),
+        # not for positive/calm emotions like "I am so happy today"
+        if emotion in {"Sad", "Anxious"}:
+            return "medium"
+        return "none"
 
     # Secondary ongoing risk indicators
     elevated_risk_statuses = {"Depression", "Stress", "Bipolar", "Personality disorder"}

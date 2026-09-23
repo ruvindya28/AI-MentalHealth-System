@@ -3,6 +3,7 @@ import { getSessionUserId } from "@/lib/auth/session";
 import { analyzeTextSchema } from "@/lib/validation/analyze";
 import { jsonError, zodErrorResponse } from "@/lib/http/errors";
 import { analyzeText as analyzeTextFallback, type CrisisLevel, type Emotion } from "@/lib/mock-emotion-analyzer";
+import { classifyEmotionSemantically } from "@/lib/llm/emotion-classifier";
 
 const ML_SERVICE_URL = process.env.ML_SERVICE_URL ?? "http://127.0.0.1:8000";
 const ML_SERVICE_TIMEOUT_MS = 5000;
@@ -86,8 +87,24 @@ export async function POST(request: Request) {
     if (!parsed.success) return zodErrorResponse(parsed.error);
 
     const mlResult = await callMlService(parsed.data.text);
-    if (mlResult && mlResult.emotion !== "Unknown") {
+    if (mlResult && mlResult.emotion !== "Unknown" && mlResult.analysisStatus === "ok") {
         return NextResponse.json(mlResult, { status: 200 });
+    }
+
+    // Semantic Disambiguation: For conversational phrases where the statistical
+    // n-gram model is uncertain or diffuse, query Gemini Flash-Lite to categorize
+    // into the 6 canonical research emotion classes with full contextual understanding.
+    const semanticResult = await classifyEmotionSemantically(parsed.data.text);
+    if (semanticResult && semanticResult.emotion !== "Unknown") {
+        return NextResponse.json(
+            {
+                emotion: semanticResult.emotion,
+                confidence: semanticResult.confidence,
+                crisisLevel: mlResult ? mlResult.crisisLevel : "none",
+                analysisStatus: "ok",
+            },
+            { status: 200 }
+        );
     }
 
     const fallbackResult = analyzeTextFallback(parsed.data.text);
