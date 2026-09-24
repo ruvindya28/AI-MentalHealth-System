@@ -14,8 +14,7 @@ import {
 import { format, isToday, isYesterday } from "date-fns";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { EMOTION_COLORS, CRISIS_COLORS, type Emotion, type CrisisLevel } from "@/lib/mock-emotion-analyzer";
+import { EMOTION_COLORS, type Emotion, type CrisisLevel } from "@/lib/mock-emotion-analyzer";
 
 interface SessionItem {
   _id: string;
@@ -40,34 +39,101 @@ function sessionDateLabel(dateStr: string) {
   return format(d, "MMM d");
 }
 
+// Module-level in-memory cache for chat sessions so navigating between chats never re-triggers sidebar loading
+let cachedChatSessions: SessionItem[] | null = null;
+
 export function SessionSidebar() {
   const router = useRouter();
   const params = useParams<{ sessionId: string }>();
-  const activeId = params?.sessionId;
+  const [createdSessionId, setCreatedSessionId] = useState<string | null>(null);
 
-  const [sessions, setSessions] = useState<SessionItem[]>([]);
-  const [loading, setLoading] = useState(true);
+  // Derive active ID directly during render — no effect needed
+  const activeSessionId =
+    params?.sessionId && params.sessionId !== "new"
+      ? params.sessionId
+      : (createdSessionId ?? params?.sessionId);
+
+  const [sessions, setSessions] = useState<SessionItem[]>(() => cachedChatSessions ?? []);
+  const [loading, setLoading] = useState(() => !cachedChatSessions);
   const [collapsed, setCollapsed] = useState(false);
 
   useEffect(() => {
-    let cancelled = false;
-    (async () => {
+    let ignore = false;
+
+    async function loadSessions() {
       try {
-        const res = await fetch("/api/therapy", { cache: "no-store" });
+        const res = await fetch("/api/therapy?type=chat", { cache: "no-store" });
         if (!res.ok) return;
         const data = (await res.json()) as { sessions: SessionItem[] };
-        if (!cancelled) setSessions(data.sessions ?? []);
+        if (!ignore) {
+          const chatOnly = (data.sessions ?? []).filter((s) => s.type === "chat" || !s.type);
+          cachedChatSessions = chatOnly;
+          setSessions(chatOnly);
+        }
       } catch {
         // silently skip
       } finally {
-        if (!cancelled) setLoading(false);
+        if (!ignore) {
+          setLoading(false);
+        }
       }
-    })();
-    return () => { cancelled = true; };
-  }, [activeId]); // re-fetch whenever the active session changes
+    }
 
-  const handleNewChat = () => router.push("/therapy/new");
-  const handleOpen = (id: string) => router.push(`/therapy/${id}`);
+    void loadSessions();
+
+    const handleSessionUpdated = (e: Event) => {
+      const customEvent = e as CustomEvent<{
+        sessionId?: string;
+        preview?: string;
+        emotion?: Emotion;
+        crisisLevel?: CrisisLevel;
+      }>;
+
+      if (customEvent.detail?.sessionId) {
+        const sid = customEvent.detail.sessionId;
+        setCreatedSessionId(sid);
+
+        // Optimistically insert or update the session at the top of the sidebar immediately
+        setSessions((prev) => {
+          const existingIdx = prev.findIndex((s) => s._id === sid);
+          const updatedItem: SessionItem = {
+            _id: sid,
+            type: "chat",
+            createdAt: prev[existingIdx]?.createdAt || new Date().toISOString(),
+            preview: customEvent.detail?.preview ?? prev[existingIdx]?.preview,
+            dominantEmotion: customEvent.detail?.emotion ?? prev[existingIdx]?.dominantEmotion,
+            crisisLevel: customEvent.detail?.crisisLevel ?? prev[existingIdx]?.crisisLevel,
+          };
+
+          const next = existingIdx >= 0
+            ? prev.map((item, idx) => (idx === existingIdx ? updatedItem : item))
+            : [updatedItem, ...prev];
+
+          cachedChatSessions = next;
+          return next;
+        });
+      }
+
+      // Re-fetch in background to ensure database sync
+      void loadSessions();
+    };
+
+    window.addEventListener("therapy-session-updated", handleSessionUpdated);
+    return () => {
+      ignore = true;
+      window.removeEventListener("therapy-session-updated", handleSessionUpdated);
+    };
+  }, [params?.sessionId]);
+
+  const handleNewChat = () => {
+    setCreatedSessionId(null);
+    router.push("/therapy/new");
+  };
+
+  const handleOpen = (id: string) => {
+    setCreatedSessionId(id);
+    router.push(`/therapy/${id}`);
+  };
 
   return (
     <aside
@@ -81,7 +147,7 @@ export function SessionSidebar() {
       <div className="flex items-center gap-2 px-3 py-3 border-b shrink-0">
         {!collapsed && (
           <span className="flex-1 text-sm font-semibold text-foreground truncate">
-            Sessions
+            Chat History
           </span>
         )}
         <Button
@@ -118,28 +184,33 @@ export function SessionSidebar() {
       {/* Session list */}
       <div className="flex-1 overflow-y-auto py-1 space-y-0.5 px-1.5">
         {loading && (
-          <div className="flex justify-center py-4">
-            <span className="w-4 h-4 rounded-full border-2 border-primary border-t-transparent animate-spin" />
+          <div className="space-y-1.5 p-1 animate-pulse">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="p-2 rounded-xl bg-muted/40 space-y-1.5">
+                <div className="h-3 w-20 bg-muted/80 rounded" />
+                <div className="h-2.5 w-32 bg-muted/60 rounded" />
+              </div>
+            ))}
           </div>
         )}
 
         {!loading && sessions.length === 0 && !collapsed && (
           <p className="text-[11px] text-muted-foreground text-center py-6 px-2">
-            No sessions yet. Start a new chat!
+            No chat sessions yet. Start a new chat!
           </p>
         )}
 
         {!loading &&
           sessions.map((s) => {
-            const isActive = s._id === activeId;
+            const isActive = s._id === activeSessionId;
             const emotionColor =
               s.dominantEmotion && EMOTION_COLORS[s.dominantEmotion]
                 ? EMOTION_COLORS[s.dominantEmotion]
                 : "text-muted-foreground";
-            const crisisColor =
-              s.crisisLevel && s.crisisLevel !== "none" && CRISIS_COLORS[s.crisisLevel]
-                ? CRISIS_COLORS[s.crisisLevel]
-                : null;
+            const isHighRisk = s.crisisLevel === "high";
+            const isMediumRisk = s.crisisLevel === "medium";
+            const isLowRisk = s.crisisLevel === "low";
+            const hasRisk = isHighRisk || isMediumRisk || isLowRisk;
 
             return (
               <button
@@ -148,7 +219,7 @@ export function SessionSidebar() {
                 onClick={() => handleOpen(s._id)}
                 title={
                   collapsed
-                    ? `${s.type === "voice" ? "Voice" : "Chat"} · ${sessionDateLabel(s.createdAt)}`
+                    ? `${s.type === "voice" ? "Voice" : "Chat"}${hasRisk ? ` (${s.crisisLevel?.toUpperCase()} RISK)` : ""} · ${sessionDateLabel(s.createdAt)}`
                     : undefined
                 }
                 className={cn(
@@ -161,7 +232,7 @@ export function SessionSidebar() {
                 {/* Type icon */}
                 <span
                   className={cn(
-                    "shrink-0 flex items-center justify-center w-7 h-7 rounded-lg",
+                    "shrink-0 relative flex items-center justify-center w-7 h-7 rounded-lg",
                     isActive ? "bg-primary/20" : "bg-muted group-hover:bg-muted/80"
                   )}
                 >
@@ -169,6 +240,9 @@ export function SessionSidebar() {
                     <Mic className="w-3.5 h-3.5" />
                   ) : (
                     <MessageSquare className="w-3.5 h-3.5" />
+                  )}
+                  {isHighRisk && collapsed && (
+                    <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-red-500 ring-2 ring-background" />
                   )}
                 </span>
 
@@ -179,10 +253,19 @@ export function SessionSidebar() {
                         {sessionDateLabel(s.createdAt)}
                       </span>
                       {/* Crisis badge */}
-                      {crisisColor && (
-                        <AlertTriangle
-                          className={cn("w-3 h-3 shrink-0", crisisColor)}
-                        />
+                      {hasRisk && (
+                        <span title={`${s.crisisLevel?.toUpperCase()} RISK`} className="inline-flex shrink-0">
+                          <AlertTriangle
+                            className={cn(
+                              "w-3.5 h-3.5",
+                              isHighRisk
+                                ? "text-red-500 fill-red-500/20"
+                                : isMediumRisk
+                                ? "text-amber-500 fill-amber-500/20"
+                                : "text-yellow-500 fill-yellow-500/20"
+                            )}
+                          />
+                        </span>
                       )}
                     </div>
 

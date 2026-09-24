@@ -13,8 +13,14 @@ export async function GET(request: Request) {
 
     const { searchParams } = new URL(request.url);
     const wantFull = searchParams.get("full") === "true";
+    const typeFilter = searchParams.get("type");
 
-    const rawSessions = await TherapySession.find({ userId })
+    const filter: Record<string, unknown> = { userId };
+    if (typeFilter === "chat" || typeFilter === "voice") {
+        filter.type = typeFilter;
+    }
+
+    const rawSessions = await TherapySession.find(filter)
         .sort({ createdAt: -1 })
         .limit(100)
         .lean();

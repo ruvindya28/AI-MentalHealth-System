@@ -19,9 +19,9 @@ import ReactMarkdown from "react-markdown";
 import { Badge } from "@/components/ui/badge";
 import { LiveAnalysisPanel } from "@/components/therapy/live-analysis-panel";
 import { SessionSidebar } from "@/components/therapy/session-sidebar";
+import { TherapySkeleton } from "@/components/therapy/therapy-skeleton";
 import {
   EMOTION_COLORS,
-  CRISIS_COLORS,
   type CrisisLevel,
   type Emotion,
 } from "@/lib/mock-emotion-analyzer";
@@ -88,8 +88,17 @@ export default function TherapyPage() {
   const [crisisLevel, setCrisisLevel] = useState<CrisisLevel>("none");
   const [persistedSessionId, setPersistedSessionId] = useState<string | null>(null);
   const [sessionType, setSessionType] = useState<"chat" | "voice">("chat");
+  const [restoredSessionId, setRestoredSessionId] = useState<string | null>(null);
+
+  // Pure derived state during render — no effect needed
+  const isRestoring = Boolean(
+    params?.sessionId &&
+    params.sessionId !== "new" &&
+    restoredSessionId !== params.sessionId
+  );
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const chatContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const sessionId = params.sessionId;
@@ -125,6 +134,7 @@ export default function TherapyPage() {
 
         setMessages(restored);
         setPersistedSessionId(session._id);
+        setRestoredSessionId(session._id);
         if (lastAnalyzed) {
           setLatestEmotion(lastAnalyzed.emotion ?? null);
           setLatestConfidence(lastAnalyzed.confidence ?? null);
@@ -132,6 +142,9 @@ export default function TherapyPage() {
         }
       } catch (error) {
         console.error("Error restoring therapy session:", error);
+        if (!cancelled) {
+          setRestoredSessionId(sessionId);
+        }
       }
     })();
 
@@ -150,16 +163,17 @@ export default function TherapyPage() {
     router.push("/therapy/new");
   };
 
-  const scrollToBottom = () => {
-    if (messagesEndRef.current) {
-      setTimeout(() => {
-        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-      }, 100);
+  const scrollToBottom = (behavior: ScrollBehavior = "smooth") => {
+    if (chatContainerRef.current) {
+      chatContainerRef.current.scrollTo({
+        top: chatContainerRef.current.scrollHeight,
+        behavior,
+      });
     }
   };
 
   useEffect(() => {
-    if (!isTyping) {
+    if (!isTyping && messages.length > 0) {
       scrollToBottom();
     }
   }, [messages, isTyping]);
@@ -223,6 +237,19 @@ export default function TherapyPage() {
         confidence: analysis.confidence,
         crisisLevel: analysis.crisisLevel,
       });
+
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(
+          new CustomEvent("therapy-session-updated", {
+            detail: {
+              sessionId,
+              preview: trimmed,
+              emotion: analysis.emotion,
+              crisisLevel: analysis.crisisLevel,
+            },
+          })
+        );
+      }
     }
 
     const reply = sessionId ? await fetchTherapyReply(sessionId, analysis, trimmed) : generateReply(analysis, trimmed);
@@ -243,6 +270,10 @@ export default function TherapyPage() {
     e.preventDefault();
     sendMessage(message);
   };
+
+  if (isRestoring && !persistedSessionId) {
+    return <TherapySkeleton />;
+  }
 
   return (
     <div className="relative max-w-7xl mx-auto px-4 pb-4">
@@ -351,7 +382,7 @@ export default function TherapyPage() {
                 </div>
               </div>
             ) : (
-              <div className="flex-1 overflow-y-auto scroll-smooth">
+              <div ref={chatContainerRef} className="flex-1 overflow-y-auto">
                 <div className="max-w-3xl mx-auto">
                   <AnimatePresence initial={false}>
                     {messages.map((msg) => (
