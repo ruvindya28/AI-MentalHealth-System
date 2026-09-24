@@ -11,7 +11,7 @@ export async function GET() {
     if (!userId) return jsonError("Not authenticated", 401);
 
     await connectToDatabase();
-    const user = await User.findById(userId);
+    const user = await User.findById(userId).select("+passwordHash +googleId");
     if (!user) return jsonError("Not authenticated", 401);
 
     return NextResponse.json({ user: toUserDTO(user) }, { status: 200 });
@@ -28,12 +28,16 @@ export async function PATCH(request: Request) {
     if (!parsed.success) return zodErrorResponse(parsed.error);
 
     await connectToDatabase();
-    const user = await User.findById(userId);
+    const user = await User.findById(userId).select("+passwordHash +googleId");
     if (!user) return jsonError("User not found", 404);
 
-    const { name, timezone, preferences } = parsed.data;
+    const { name, image, imageSource, timezone, preferences } = parsed.data;
 
     if (name !== undefined) user.name = name;
+    if (image !== undefined) {
+        user.image = image;
+        user.imageSource = imageSource ?? (image ? "upload" : null);
+    }
     if (timezone !== undefined) user.timezone = timezone;
     if (preferences !== undefined) {
         const currentPrefs = (user as unknown as { preferences?: Record<string, unknown> }).preferences || {};

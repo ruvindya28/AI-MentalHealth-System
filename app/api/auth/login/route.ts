@@ -18,9 +18,16 @@ export async function POST(request: Request) {
 
     await connectToDatabase();
 
-    const user = await User.findOne({ email }).select("+passwordHash");
+    const user = await User.findOne({ email }).select("+passwordHash +googleId");
     if (!user) {
         return jsonError("Invalid email or password", 401);
+    }
+
+    if (!user.passwordHash) {
+        return jsonError(
+            "This account was registered with Google and does not have a password yet. Please sign in with Google or use 'Forgot password?' to set one.",
+            400
+        );
     }
 
     const isValid = await verifyPassword(password, user.passwordHash);

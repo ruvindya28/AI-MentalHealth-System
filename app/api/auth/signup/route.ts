@@ -18,13 +18,24 @@ export async function POST(request: Request) {
 
     await connectToDatabase();
 
-    const existing = await User.findOne({ email }).lean();
+    const existing = await User.findOne({ email }).select("+passwordHash +googleId").lean();
     if (existing) {
-        return jsonError("An account with this email already exists", 409);
+        if (existing.googleId && !existing.passwordHash) {
+            return jsonError(
+                "An account with this email was registered via Google. Please sign in with Google or reset your password to set an account password.",
+                409
+            );
+        }
+        return jsonError("An account with this email already exists. Please sign in instead.", 409);
     }
 
     const passwordHash = await hashPassword(password);
-    const user = await User.create({ name, email, passwordHash });
+    const user = await User.create({
+        name,
+        email,
+        passwordHash,
+        emailVerified: false,
+    });
 
     await createSessionCookie(user._id.toString());
 

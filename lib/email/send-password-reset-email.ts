@@ -1,4 +1,4 @@
-import { getResendClient } from "@/lib/email/resend";
+import { sendEmail } from "@/lib/email/mailer";
 
 interface SendPasswordResetEmailParams {
     to: string;
@@ -11,16 +11,13 @@ export async function sendPasswordResetEmail({
     name,
     resetUrl,
 }: SendPasswordResetEmailParams): Promise<void> {
-    const from = process.env.EMAIL_FROM ?? "onboarding@resend.dev";
-
-    const { error } = await getResendClient().emails.send({
-        from: `MindCare <${from}>`,
+    await sendEmail({
         to,
         subject: "Reset your MindCare password",
         html: `
-            <div style="font-family: -apple-system, sans-serif; max-width: 480px; margin: 0 auto; color: #2e3547;">
-                <h2 style="color: #4a5568;">Reset your password</h2>
-                <p>Hi ${name},</p>
+            <div style="font-family: -apple-system, sans-serif; max-width: 480px; margin: 0 auto; color: #2e3547; padding: 24px; border: 1px solid #e2e8f0; border-radius: 16px;">
+                <h2 style="color: #4a5568; margin-top: 0;">Reset your password</h2>
+                <p>Hi ${name || "there"},</p>
                 <p>We received a request to reset your MindCare password. This link expires in 1 hour.</p>
                 <p style="margin: 24px 0;">
                     <a href="${resetUrl}" style="background: #8b9eff; color: #1e2233; padding: 12px 20px; border-radius: 10px; text-decoration: none; font-weight: 600; display: inline-block;">
@@ -33,8 +30,4 @@ export async function sendPasswordResetEmail({
             </div>
         `,
     });
-
-    if (error) {
-        throw new Error(`Failed to send password reset email: ${error.message}`);
-    }
 }

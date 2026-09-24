@@ -23,7 +23,7 @@ export async function POST(request: Request) {
     const user = await User.findOne({
         resetPasswordTokenHash: tokenHash,
         resetPasswordExpires: { $gt: new Date() },
-    }).select("+resetPasswordTokenHash +resetPasswordExpires");
+    }).select("+resetPasswordTokenHash +resetPasswordExpires +passwordHash +googleId");
 
     if (!user) {
         return jsonError("This reset link is invalid or has expired", 400);
@@ -32,6 +32,7 @@ export async function POST(request: Request) {
     user.passwordHash = await hashPassword(password);
     user.resetPasswordTokenHash = undefined;
     user.resetPasswordExpires = undefined;
+    user.emailVerified = true;
     await user.save();
 
     await createSessionCookie(user._id.toString());

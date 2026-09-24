@@ -24,6 +24,8 @@ export const resetPasswordSchema = z.object({
 
 export const updateProfileSchema = z.object({
     name: z.string().trim().min(2, "Name must be at least 2 characters").max(120).optional(),
+    image: z.string().trim().max(2000).optional().nullable(),
+    imageSource: z.enum(["google", "upload", "custom"]).optional(),
     timezone: z.string().trim().min(1).max(100).optional(),
     preferences: z
         .object({
@@ -34,7 +36,20 @@ export const updateProfileSchema = z.object({
 });
 
 export const changePasswordSchema = z.object({
-    currentPassword: z.string().min(1, "Current password is required"),
+    currentPassword: z.string().min(1, "Current password is required").optional(),
     newPassword: passwordSchema,
+});
+
+export const setPasswordSchema = z.object({
+    password: passwordSchema,
+});
+
+export const verifyOtpSchema = z.object({
+    email: z.string().email("Please enter a valid email address").trim().toLowerCase().optional(),
+    code: z.string().trim().regex(/^\d{6}$/, "Verification code must be 6 digits"),
+});
+
+export const resendOtpSchema = z.object({
+    email: z.string().email("Please enter a valid email address").trim().toLowerCase().optional(),
 });
 

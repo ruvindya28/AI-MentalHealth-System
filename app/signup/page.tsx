@@ -1,24 +1,28 @@
-"use client"
+"use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Mail, User, Loader2, AlertCircle } from "lucide-react";
 import Link from "next/link";
 import { AuthLayout } from "@/components/auth/auth-layout";
 import { PasswordInput } from "@/components/auth/password-input";
+import { GoogleSignInButton } from "@/components/auth/google-sign-in-button";
 import { useAuth } from "@/lib/contexts/auth-context";
 
-export default function SignupPage(){
+function SignupForm() {
+    const searchParams = useSearchParams();
+    const router = useRouter();
+    const { setUser } = useAuth();
+
     const [name, setName] = useState("");
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [confirmPassword, setConfirmPassword] = useState("");
-    const [error, setError] = useState("");
+    const fromPath = searchParams.get("from") || "/dashboard";
+    const [error, setError] = useState(() => searchParams.get("error") || "");
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const router = useRouter();
-    const { setUser } = useAuth();
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -48,7 +52,7 @@ export default function SignupPage(){
             }
 
             setUser(data.user);
-            router.push("/dashboard");
+            router.push(fromPath);
             router.refresh();
         } catch {
             setError("Couldn't reach the server. Please try again.");
@@ -56,7 +60,7 @@ export default function SignupPage(){
         }
     };
 
-    return(
+    return (
         <AuthLayout tagline="Start your journey. Personalized, private support whenever you need it.">
             <div className="space-y-1 mb-6">
                 <h1 className="text-2xl md:text-3xl font-extrabold bg-linear-to-r from-primary to-primary/80 bg-clip-text text-transparent tracking-tight">
@@ -67,86 +71,99 @@ export default function SignupPage(){
                 </p>
             </div>
 
-            <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="space-y-1.5">
-                    <label htmlFor="name" className="block text-sm font-semibold">
-                        Full Name
-                    </label>
-                    <div className="relative">
-                        <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                        <Input
-                            id="name"
-                            type="text"
-                            placeholder="Your name"
-                            value={name}
-                            onChange={(e) => setName(e.target.value)}
-                            required
-                            className="pl-10 h-11 rounded-xl"
-                        />
+            {error && (
+                <div className="mb-4 flex items-center gap-2 rounded-xl border border-crisis/30 bg-crisis/10 px-3.5 py-2.5 text-sm font-medium text-crisis-foreground dark:text-crisis">
+                    <AlertCircle className="h-4 w-4 shrink-0 text-crisis-foreground dark:text-crisis" />
+                    <span>{error}</span>
+                </div>
+            )}
+
+            <div className="space-y-4">
+                <GoogleSignInButton text="Sign up with Google" from={fromPath} />
+
+                <div className="relative flex items-center justify-center my-4">
+                    <div className="absolute inset-0 flex items-center">
+                        <div className="w-full border-t border-border/60" />
                     </div>
+                    <span className="relative bg-background px-3 text-xs uppercase tracking-wider text-muted-foreground">
+                        or with email
+                    </span>
                 </div>
 
-                <div className="space-y-1.5">
-                    <label htmlFor="email" className="block text-sm font-semibold">
-                        Email Address
-                    </label>
-                    <div className="relative">
-                        <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                        <Input
-                            id="email"
-                            type="email"
-                            placeholder="you@example.com"
-                            value={email}
-                            onChange={(e) => setEmail(e.target.value)}
-                            required
-                            className="pl-10 h-11 rounded-xl"
-                        />
-                    </div>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <form onSubmit={handleSubmit} className="space-y-4">
                     <div className="space-y-1.5">
-                        <label htmlFor="password" className="block text-sm font-semibold">
-                            Password
+                        <label htmlFor="name" className="block text-sm font-semibold">
+                            Full Name
                         </label>
-                        <PasswordInput id="password" value={password} onChange={setPassword} />
+                        <div className="relative">
+                            <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                            <Input
+                                id="name"
+                                type="text"
+                                placeholder="Your name"
+                                value={name}
+                                onChange={(e) => setName(e.target.value)}
+                                required
+                                className="pl-10 h-11 rounded-xl"
+                            />
+                        </div>
                     </div>
+
                     <div className="space-y-1.5">
-                        <label htmlFor="confirmPassword" className="block text-sm font-semibold">
-                            Confirm Password
+                        <label htmlFor="email" className="block text-sm font-semibold">
+                            Email Address
                         </label>
-                        <PasswordInput
-                            id="confirmPassword"
-                            value={confirmPassword}
-                            onChange={setConfirmPassword}
-                            placeholder="Confirm password"
-                        />
+                        <div className="relative">
+                            <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                            <Input
+                                id="email"
+                                type="email"
+                                placeholder="you@example.com"
+                                value={email}
+                                onChange={(e) => setEmail(e.target.value)}
+                                required
+                                className="pl-10 h-11 rounded-xl"
+                            />
+                        </div>
                     </div>
-                </div>
 
-                {error && (
-                    <div className="flex items-center gap-2 rounded-xl border border-crisis/30 bg-crisis/10 px-3.5 py-2.5 text-sm font-medium text-crisis-foreground dark:text-crisis">
-                        <AlertCircle className="h-4 w-4 shrink-0 text-crisis-foreground dark:text-crisis" />
-                        {error}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div className="space-y-1.5">
+                            <label htmlFor="password" className="block text-sm font-semibold">
+                                Password
+                            </label>
+                            <PasswordInput id="password" value={password} onChange={setPassword} />
+                        </div>
+                        <div className="space-y-1.5">
+                            <label htmlFor="confirmPassword" className="block text-sm font-semibold">
+                                Confirm Password
+                            </label>
+                            <PasswordInput
+                                id="confirmPassword"
+                                value={confirmPassword}
+                                onChange={setConfirmPassword}
+                                placeholder="Confirm password"
+                            />
+                        </div>
                     </div>
-                )}
 
-                <Button
-                className="w-full h-11 rounded-xl font-semibold bg-linear-to-r from-primary to-primary/80 shadow-md shadow-primary/20 hover:from-primary/90 hover:to-primary"
-                size="lg"
-                type="submit"
-                disabled={isSubmitting}
-                >
-                    {isSubmitting ? (
-                        <>
-                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                            Creating account...
-                        </>
-                    ) : (
-                        "Sign Up"
-                    )}
-                </Button>
-            </form>
+                    <Button
+                        className="w-full h-11 rounded-xl font-semibold bg-linear-to-r from-primary to-primary/80 shadow-md shadow-primary/20 hover:from-primary/90 hover:to-primary cursor-pointer"
+                        size="lg"
+                        type="submit"
+                        disabled={isSubmitting}
+                    >
+                        {isSubmitting ? (
+                            <>
+                                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                Creating account...
+                            </>
+                        ) : (
+                            "Sign Up"
+                        )}
+                    </Button>
+                </form>
+            </div>
 
             <p className="text-center text-sm text-muted-foreground mt-6">
                 Already have an account?{" "}
@@ -155,5 +172,13 @@ export default function SignupPage(){
                 </Link>
             </p>
         </AuthLayout>
-    )
+    );
+}
+
+export default function SignupPage() {
+    return (
+        <Suspense fallback={null}>
+            <SignupForm />
+        </Suspense>
+    );
 }

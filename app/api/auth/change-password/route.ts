@@ -20,13 +20,22 @@ export async function POST(request: Request) {
     const user = await User.findById(userId).select("+passwordHash");
     if (!user) return jsonError("User not found", 404);
 
-    const isMatch = await verifyPassword(parsed.data.currentPassword, user.passwordHash);
-    if (!isMatch) {
-        return jsonError("Current password does not match", 400);
+    // If the user already has a password, current password must match
+    if (user.passwordHash) {
+        if (!parsed.data.currentPassword) {
+            return jsonError("Current password is required to change password", 400);
+        }
+        const isMatch = await verifyPassword(parsed.data.currentPassword, user.passwordHash);
+        if (!isMatch) {
+            return jsonError("Current password does not match", 400);
+        }
     }
 
     user.passwordHash = await hashPassword(parsed.data.newPassword);
     await user.save();
 
-    return NextResponse.json({ message: "Password updated successfully" }, { status: 200 });
+    return NextResponse.json(
+        { message: user.passwordHash ? "Password updated successfully" : "Password created successfully" },
+        { status: 200 }
+    );
 }

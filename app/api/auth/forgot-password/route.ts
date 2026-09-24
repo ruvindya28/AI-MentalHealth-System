@@ -5,6 +5,7 @@ import { generateResetToken, RESET_TOKEN_TTL_MS } from "@/lib/auth/reset-token";
 import { sendPasswordResetEmail } from "@/lib/email/send-password-reset-email";
 import { forgotPasswordSchema } from "@/lib/validation/auth";
 import { jsonError, zodErrorResponse } from "@/lib/http/errors";
+import { getAppOrigin } from "@/lib/auth/origin";
 
 const GENERIC_MESSAGE =
     "If an account exists for that email, we've sent a password reset link.";
@@ -30,7 +31,8 @@ export async function POST(request: Request) {
         user.resetPasswordExpires = new Date(Date.now() + RESET_TOKEN_TTL_MS);
         await user.save();
 
-        const resetUrl = new URL(`/reset-password?token=${token}`, request.url).toString();
+        const origin = getAppOrigin(request);
+        const resetUrl = `${origin}/reset-password?token=${token}`;
 
         try {
             await sendPasswordResetEmail({ to: user.email, name: user.name, resetUrl });

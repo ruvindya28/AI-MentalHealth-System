@@ -9,6 +9,6 @@ export async function getCurrentUser(): Promise<UserDTO | null> {
     if (!userId) return null;
 
     await connectToDatabase();
-    const user = await User.findById(userId);
+    const user = await User.findById(userId).select("+passwordHash +googleId");
     return user ? toUserDTO(user) : null;
 }

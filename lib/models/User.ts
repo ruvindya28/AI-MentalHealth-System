@@ -11,7 +11,11 @@ const userSchema = new Schema(
             trim: true,
             maxlength: 254,
         },
-        passwordHash: { type: String, required: true, select: false },
+        passwordHash: { type: String, required: false, select: false },
+        googleId: { type: String, sparse: true, unique: true, select: false },
+        image: { type: String, default: null },
+        imageSource: { type: String, enum: ["google", "upload", "custom", null], default: null },
+        emailVerified: { type: Boolean, default: false },
         timezone: { type: String, default: "UTC" },
         preferences: {
             notifications: { type: Schema.Types.Mixed, default: {} },
@@ -19,6 +23,8 @@ const userSchema = new Schema(
         },
         resetPasswordTokenHash: { type: String, select: false },
         resetPasswordExpires: { type: Date, select: false },
+        otpCodeHash: { type: String, select: false },
+        otpExpires: { type: Date, select: false },
     },
     { timestamps: true }
 );

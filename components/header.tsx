@@ -7,6 +7,7 @@ import { useState } from "react";
 import { SignInButton } from "@/components/auth/sign-in-button";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { UserAvatar } from "@/components/ui/user-avatar";
 import { useAuth } from "@/lib/contexts/auth-context";
 import { cn } from "@/lib/utils";
 
@@ -91,7 +92,7 @@ export default function Header() {
                                     asChild
                                     variant="ghost"
                                     size="icon"
-                                    className="rounded-full"
+                                    className="rounded-full overflow-hidden"
                                     aria-label="Profile settings"
                                 >
                                     <Link
@@ -100,7 +101,11 @@ export default function Header() {
                                             if (isProfileActive) e.preventDefault();
                                         }}
                                     >
-                                        <UserRound className="h-4 w-4" />
+                                        <UserAvatar
+                                            src={user.image}
+                                            name={user.name}
+                                            className="h-7 w-7 ring-1 ring-primary/30"
+                                        />
                                     </Link>
                                 </Button>
                             )}

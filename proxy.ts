@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSessionUserId } from "@/lib/auth/session";
 
-const protectedPrefixes = ["/dashboard", "/therapy", "/history", "/reports", "/profile"];
+const protectedPrefixes = ["/dashboard", "/therapy", "/history", "/reports", "/profile", "/set-password"];
 const authOnlyPaths = ["/login", "/signup"];
 
 export async function proxy(request: NextRequest) {

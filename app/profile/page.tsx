@@ -24,7 +24,6 @@ import {
   LogOut,
   Loader2,
   CheckCircle2,
-  History,
   Sparkles,
   ArrowRight,
   RefreshCw,
@@ -38,6 +37,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
+import { UserAvatar } from "@/components/ui/user-avatar";
 import { useAuth } from "@/lib/contexts/auth-context";
 import { cn } from "@/lib/utils";
 
@@ -115,6 +115,7 @@ export default function ProfilePage() {
   // Profile fields
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
+  const [imageUrl, setImageUrl] = useState("");
   const [timezone, setTimezone] = useState("UTC");
   const [isSavingProfile, setIsSavingProfile] = useState(false);
 
@@ -143,13 +144,16 @@ export default function ProfilePage() {
 
   // Sync user data to local state
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setMounted(true);
   }, []);
 
   useEffect(() => {
     if (user) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setName(user.name || "");
       setEmail(user.email || "");
+      setImageUrl(user.image || "");
       setTimezone(user.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC");
 
       const initialNotifications = Object.fromEntries(
@@ -289,6 +293,8 @@ export default function ProfilePage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name: name.trim(),
+          image: imageUrl.trim() || null,
+          imageSource: imageUrl.trim() ? "upload" : null,
           timezone: timezone.trim(),
           preferences: {
             notifications,
@@ -358,10 +364,10 @@ export default function ProfilePage() {
     }
   };
 
-  // Password change handler
+  // Password change / creation handler
   const handleChangePassword = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!currentPassword) {
+    if (user?.hasPassword && !currentPassword) {
       toast.error("Please enter your current password");
       return;
     }
@@ -376,24 +382,32 @@ export default function ProfilePage() {
 
     setIsChangingPassword(true);
     try {
-      const res = await fetch("/api/auth/change-password", {
+      const endpoint = user?.hasPassword ? "/api/auth/change-password" : "/api/auth/set-password";
+      const payload = user?.hasPassword
+        ? { currentPassword, newPassword }
+        : { password: newPassword };
+
+      const res = await fetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ currentPassword, newPassword }),
+        body: JSON.stringify(payload),
       });
 
       const data = await res.json();
       if (!res.ok) {
-        throw new Error(data.error || "Failed to change password");
+        throw new Error(data.error || "Failed to update password");
       }
 
-      toast.success("Password updated", { description: "Your account password was successfully changed." });
+      await refetch();
+      toast.success(user?.hasPassword ? "Password updated" : "Password created", {
+        description: "Your account credentials have been updated.",
+      });
       setCurrentPassword("");
       setNewPassword("");
       setConfirmPassword("");
       setShowPasswordSection(false);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to change password");
+      toast.error(err instanceof Error ? err.message : "Failed to update password");
     } finally {
       setIsChangingPassword(false);
     }
@@ -645,20 +659,59 @@ export default function ProfilePage() {
             <CardContent>
               <form onSubmit={handleSaveProfile} className="space-y-5">
                 {/* Avatar Display */}
-                <div className="flex items-center gap-4">
-                  <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-linear-to-br from-primary/30 to-accent/30 text-lg font-bold font-heading text-foreground shadow-xs ring-2 ring-primary/20">
-                    {initials}
-                  </div>
-                  <div className="space-y-0.5">
-                    <p className="text-sm font-semibold text-foreground">{name || user.name}</p>
+                <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+                  <UserAvatar
+                    src={user.image}
+                    name={user.name}
+                    className="h-16 w-16 text-lg ring-2 ring-primary/20 shadow-xs"
+                  />
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <p className="text-sm font-semibold text-foreground">{name || user.name}</p>
+                      {user.hasGoogleLinked && (
+                        <Badge variant="outline" className="text-[11px] gap-1 bg-primary/5 text-primary border-primary/20 py-0.5">
+                          <svg className="w-3 h-3 shrink-0" viewBox="0 0 24 24" aria-hidden="true">
+                            <path fill="#4285F4" d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.66-5.17 3.66-9.17z" />
+                            <path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.25v3.15C3.26 21.36 7.33 24 12 24z" />
+                            <path fill="#FBBC05" d="M5.28 14.27c-.25-.72-.38-1.49-.38-2.27s.13-1.55.38-2.27V6.58H1.25C.45 8.18 0 9.99 0 12s.45 3.82 1.25 5.42l4.03-3.15z" />
+                            <path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.33 0 3.26 2.64 1.25 6.58l4.03 3.15c.95-2.83 3.6-4.98 6.72-4.98z" />
+                          </svg>
+                          Google Linked
+                        </Badge>
+                      )}
+                      {user.emailVerified && (
+                        <Badge variant="outline" className="text-[11px] gap-1 bg-success/10 text-success border-success/30 py-0.5">
+                          <CheckCircle2 className="w-3 h-3" />
+                          Verified
+                        </Badge>
+                      )}
+                    </div>
                     <p className="text-xs text-muted-foreground flex items-center gap-1">
                       <Mail className="w-3 h-3 text-primary/70" />
                       {email}
                     </p>
                     <p className="text-[11px] text-muted-foreground/80">
-                      Your initials are derived from your real name across MindCare.
+                      {user.imageSource === "google"
+                        ? "Profile photo synchronized from your linked Google account."
+                        : user.imageSource === "upload"
+                        ? "Custom uploaded profile photo (protected from Google overwrite)."
+                        : "Your initials are derived from your real name across MindCare."}
                     </p>
                   </div>
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label htmlFor="imageUrl">Profile Photo URL (Custom upload/link)</Label>
+                  <Input
+                    id="imageUrl"
+                    type="url"
+                    value={imageUrl}
+                    onChange={(e) => setImageUrl(e.target.value)}
+                    placeholder="https://example.com/avatar.jpg"
+                  />
+                  <p className="text-[11px] text-muted-foreground">
+                    Setting a custom photo URL preserves your image and protects it from being overwritten by Google sign-in.
+                  </p>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -732,7 +785,7 @@ export default function ProfilePage() {
           </Card>
         </motion.div>
 
-        {/* Account Security (Change Password) */}
+        {/* Account Security (Password) */}
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
@@ -743,7 +796,9 @@ export default function ProfilePage() {
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <KeyRound className="w-4 h-4 text-primary" />
-                  <CardTitle className="font-heading">Account Security</CardTitle>
+                  <CardTitle className="font-heading">
+                    {user.hasPassword ? "Account Security" : "Account Password"}
+                  </CardTitle>
                 </div>
                 <Button
                   variant="ghost"
@@ -751,29 +806,41 @@ export default function ProfilePage() {
                   onClick={() => setShowPasswordSection(!showPasswordSection)}
                   className="text-xs rounded-full"
                 >
-                  {showPasswordSection ? "Cancel" : "Change Password"}
+                  {showPasswordSection
+                    ? "Cancel"
+                    : user.hasPassword
+                    ? "Change Password"
+                    : "Set Password"}
                 </Button>
               </div>
-              <CardDescription>Manage your password and security credentials</CardDescription>
+              <CardDescription>
+                {user.hasPassword
+                  ? "Manage your password and security credentials"
+                  : "You currently sign in via Google. Add a password to enable email and password login."}
+              </CardDescription>
             </CardHeader>
             {showPasswordSection && (
               <CardContent className="pt-0">
                 <form onSubmit={handleChangePassword} className="space-y-4 pt-2 border-t border-border/60">
-                  <div className="space-y-1.5">
-                    <Label htmlFor="currentPassword">Current Password</Label>
-                    <Input
-                      id="currentPassword"
-                      type="password"
-                      value={currentPassword}
-                      onChange={(e) => setCurrentPassword(e.target.value)}
-                      placeholder="Enter current password"
-                      required
-                    />
-                  </div>
+                  {user.hasPassword && (
+                    <div className="space-y-1.5">
+                      <Label htmlFor="currentPassword">Current Password</Label>
+                      <Input
+                        id="currentPassword"
+                        type="password"
+                        value={currentPassword}
+                        onChange={(e) => setCurrentPassword(e.target.value)}
+                        placeholder="Enter current password"
+                        required
+                      />
+                    </div>
+                  )}
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-1.5">
-                      <Label htmlFor="newPassword">New Password</Label>
+                      <Label htmlFor="newPassword">
+                        {user.hasPassword ? "New Password" : "Create Password"}
+                      </Label>
                       <Input
                         id="newPassword"
                         type="password"
@@ -784,13 +851,15 @@ export default function ProfilePage() {
                       />
                     </div>
                     <div className="space-y-1.5">
-                      <Label htmlFor="confirmPassword">Confirm New Password</Label>
+                      <Label htmlFor="confirmPassword">
+                        {user.hasPassword ? "Confirm New Password" : "Confirm Password"}
+                      </Label>
                       <Input
                         id="confirmPassword"
                         type="password"
                         value={confirmPassword}
                         onChange={(e) => setConfirmPassword(e.target.value)}
-                        placeholder="Re-enter new password"
+                        placeholder="Re-enter password"
                         required
                       />
                     </div>
@@ -799,14 +868,14 @@ export default function ProfilePage() {
                   <Button
                     type="submit"
                     disabled={isChangingPassword}
-                    className="gap-2 rounded-full"
+                    className="gap-2 rounded-full cursor-pointer"
                   >
                     {isChangingPassword ? (
                       <Loader2 className="w-4 h-4 animate-spin" />
                     ) : (
                       <KeyRound className="w-4 h-4" />
                     )}
-                    Update Password
+                    {user.hasPassword ? "Update Password" : "Set Password"}
                   </Button>
                 </form>
               </CardContent>
