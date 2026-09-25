@@ -1,10 +1,25 @@
-"use client"
+"use client";
 
 import { Container } from "@/components/ui/container";
 import { useState, useEffect, useMemo } from "react";
-import { motion } from 'framer-motion';
+import { motion } from "framer-motion";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { BrainCircuit, Heart, MessageCircle, Sparkles, Brain, Trophy, Activity, FileText, Download } from "lucide-react";
+import {
+  BrainCircuit,
+  Heart,
+  MessageCircle,
+  Sparkles,
+  Brain,
+  Trophy,
+  Activity,
+  FileText,
+  Download,
+  Mic,
+  ArrowRight,
+  Headphones,
+  Zap,
+  CheckCircle2,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { format, isSameDay } from "date-fns";
@@ -14,8 +29,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { AnxietyGames } from "@/components/games/anxiety-games";
 import { MoodForm } from "@/components/mood/mood-form";
 import { ActivityLogger } from "@/components/activities/activity-logger";
-import { VoiceSessionCard } from "@/components/voice/voice-session-card";
-import { CallHistory } from "@/components/voice/call-history";
 import { EmotionTrends } from "@/components/dashboard/emotion-trends";
 import { CrisisAlerts } from "@/components/dashboard/crisis-alerts";
 import { sessionsToEmotionLog, type EmotionLogEntry } from "@/lib/emotion-log";
@@ -25,372 +38,461 @@ import type { Emotion, CrisisLevel } from "@/lib/mock-emotion-analyzer";
 import { useAuth } from "@/lib/contexts/auth-context";
 
 interface RawTherapySession {
-    _id: string;
-    type: string;
-    messages: {
-        role: "user" | "assistant";
-        content: string;
-        timestamp: string;
-        emotion?: Emotion;
-        confidence?: number;
-        crisisLevel?: CrisisLevel;
-    }[];
+  _id: string;
+  type: string;
+  messages: {
+    role: "user" | "assistant";
+    content: string;
+    timestamp: string;
+    emotion?: Emotion;
+    confidence?: number;
+    crisisLevel?: CrisisLevel;
+  }[];
 }
 
 export default function DashboardPage() {
-    const { user } = useAuth();
-    const firstName = user?.name ? user.name.trim().split(/\s+/)[0] : "";
-    const [currentTime, setCurrentTime] = useState<Date | null>(null);
-    const [showMoodModal, setShowMoodModal] = useState(false);
-    const [isSavingMood, setIsSavingMood] = useState(false);
-    const [showActivityLogger, setShowActivityLogger] = useState(false);
-    const [todayMoodScore, setTodayMoodScore] = useState<number | null>(null);
-    const [callHistory, setCallHistory] = useState<CallRecord[]>([]);
-    const [activityCount, setActivityCount] = useState(0);
-    const [chatSessionCount, setChatSessionCount] = useState(0);
-    const [emotionLog, setEmotionLog] = useState<EmotionLogEntry[]>([]);
+  const { user } = useAuth();
+  const firstName = user?.name ? user.name.trim().split(/\s+/)[0] : "";
+  const [currentTime, setCurrentTime] = useState<Date | null>(null);
+  const [showMoodModal, setShowMoodModal] = useState(false);
+  const [isSavingMood, setIsSavingMood] = useState(false);
+  const [showActivityLogger, setShowActivityLogger] = useState(false);
+  const [todayMoodScore, setTodayMoodScore] = useState<number | null>(null);
+  const [callHistory, setCallHistory] = useState<CallRecord[]>([]);
+  const [activityCount, setActivityCount] = useState(0);
+  const [chatSessionCount, setChatSessionCount] = useState(0);
+  const [emotionLog, setEmotionLog] = useState<EmotionLogEntry[]>([]);
 
-    const router = useRouter();
+  const router = useRouter();
 
+  useEffect(() => {
+    setCurrentTime(new Date());
+    const timer = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 1000);
 
-    useEffect(() => {
-        // Client-only clock: starts null to match SSR output, then syncs to
-        // the real time. This first set is intentional, not a derivable value.
-        // eslint-disable-next-line react-hooks/set-state-in-effect
-        setCurrentTime(new Date());
-        const timer = setInterval(() => {
-            setCurrentTime(new Date());
-        }, 1000);
+    return () => clearInterval(timer);
+  }, []);
 
-        return () => clearInterval(timer);
-    }, []);
+  const getTimeGreeting = () => {
+    if (!currentTime) return "Welcome back";
+    const hours = currentTime.getHours();
+    if (hours < 12) return "Good morning";
+    if (hours < 18) return "Good afternoon";
+    return "Good evening";
+  };
 
-    const fetchTodayMoodScore = async () => {
-        try {
-            const res = await fetch("/api/mood", { cache: "no-store" });
-            if (!res.ok) return;
-            const { entries } = (await res.json()) as {
-                entries: { moodScore: number; createdAt: string }[];
-            };
-            const todayEntries = entries.filter((entry) =>
-                isSameDay(new Date(entry.createdAt), new Date())
-            );
-            if (todayEntries.length === 0) return;
-            const average = Math.round(
-                todayEntries.reduce((sum, entry) => sum + entry.moodScore, 0) / todayEntries.length
-            );
-            setTodayMoodScore(average);
-        } catch (error) {
-            console.error("Error loading today's mood:", error);
-        }
-    };
-
-    const fetchActivityCount = async () => {
-        try {
-            const res = await fetch("/api/activities", { cache: "no-store" });
-            if (!res.ok) return;
-            const { activities } = (await res.json()) as { activities: unknown[] };
-            setActivityCount(activities.length);
-        } catch (error) {
-            console.error("Error loading activities:", error);
-        }
-    };
-
-    const fetchTherapyData = async () => {
-        try {
-            const res = await fetch("/api/therapy?full=true", { cache: "no-store" });
-            if (!res.ok) return;
-            const { sessions } = (await res.json()) as { sessions: RawTherapySession[] };
-            setChatSessionCount(sessions.filter((s) => s.type === "chat").length);
-            setCallHistory(sessionsToCallRecords(sessions));
-            setEmotionLog(sessionsToEmotionLog(sessions));
-        } catch (error) {
-            console.error("Error loading therapy sessions:", error);
-        }
-    };
-
-    useEffect(() => {
-        // Initial data fetch from the server, not a derivable value.
-        // eslint-disable-next-line react-hooks/set-state-in-effect
-        fetchTodayMoodScore();
-        fetchActivityCount();
-        fetchTherapyData();
-    }, []);
-
-    const totalSessions = chatSessionCount + callHistory.length;
-
-    const completionRate = useMemo(() => {
-        let completed = 0;
-        const totalGoals = 2;
-        if (todayMoodScore !== null) completed += 1;
-        if (activityCount > 0 || totalSessions > 0) completed += 1;
-        return Math.round((completed / totalGoals) * 100);
-    }, [todayMoodScore, activityCount, totalSessions]);
-
-    const wellnessScore = useMemo(
-        () => computeWellnessScore({ moodScore: todayMoodScore, emotionLog, completionRate }),
-        [todayMoodScore, emotionLog, completionRate]
-    );
-
-    const wellnessStats = [
-        {
-            title: "Mood Score",
-            value: todayMoodScore === null ? "No data" : `${todayMoodScore}/100`,
-            icon: Brain,
-            color: "text-primary",
-            bgColor: "bg-primary/10",
-            description: "Today's average mood",
-        },
-        {
-            title: "Completion Rate",
-            value: `${completionRate}%`,
-            icon: Trophy,
-            color: "text-secondary-foreground",
-            bgColor: "bg-secondary/20",
-            description: completionRate === 100 ? "Daily goals complete" : completionRate === 0 ? "Start your daily goals" : "In progress today",
-        },
-        {
-            title: "Therapy Sessions",
-            value: `${totalSessions} session${totalSessions === 1 ? "" : "s"}`,
-            icon: Heart,
-            color: "text-accent-foreground",
-            bgColor: "bg-accent/20",
-            description: "Total sessions completed",
-        },
-        {
-            title: "Total Activities",
-            value: `${activityCount}`,
-            icon: Activity,
-            color: "text-success",
-            bgColor: "bg-success/10",
-            description: "Check-ins logged",
-        },
-    ]
-
-    const handleMoodSubmit = async (data: { moodScore: number }) => {
-        setIsSavingMood(true);
-        try {
-            const res = await fetch("/api/mood", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(data),
-            });
-            if (!res.ok) throw new Error("Failed to save mood");
-            await fetchTodayMoodScore();
-            setShowMoodModal(false);
-            toast.success("Mood saved", { description: "Thanks for checking in with yourself today." });
-        } catch (error) {
-            console.error("Error saving mood:", error);
-            toast.error("Couldn't save your mood. Please try again.");
-        } finally {
-            setIsSavingMood(false);
-        }
-    };
-
-    const handleAICheckIn = () => {
-        setShowActivityLogger(true);
-    };
-
-    const handleCallEnd = () => {
-        fetchTherapyData();
-    };
-
-    const handleStartTherapy = () => {
-        router.push("/therapy");
+  const fetchTodayMoodScore = async () => {
+    try {
+      const res = await fetch("/api/mood", { cache: "no-store" });
+      if (!res.ok) return;
+      const { entries } = (await res.json()) as {
+        entries: { moodScore: number; createdAt: string }[];
+      };
+      const todayEntries = entries.filter((entry) =>
+        isSameDay(new Date(entry.createdAt), new Date())
+      );
+      if (todayEntries.length === 0) return;
+      const average = Math.round(
+        todayEntries.reduce((sum, entry) => sum + entry.moodScore, 0) / todayEntries.length
+      );
+      setTodayMoodScore(average);
+    } catch (error) {
+      console.error("Error loading today's mood:", error);
     }
+  };
 
+  const fetchActivityCount = async () => {
+    try {
+      const res = await fetch("/api/activities", { cache: "no-store" });
+      if (!res.ok) return;
+      const { activities } = (await res.json()) as { activities: unknown[] };
+      setActivityCount(activities.length);
+    } catch (error) {
+      console.error("Error loading activities:", error);
+    }
+  };
 
-    return (
-        <div className="min-h-screen bg-background">
-            <Container className="pt-28 pb-16 space-y-8">
-                <motion.div
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ duration: 0.6 }}
-                    className="flex flex-col gap-1"
-                >
-                    <h1 className="text-3xl font-bold font-heading">
-                        Welcome back{firstName ? `, ${firstName}` : ""}
-                    </h1>
-                    <p className="text-muted-foreground text-sm">
-                        {currentTime?.toLocaleTimeString("en-US", {
-                            weekday: "long",
-                            month: "long",
-                            day: "numeric",
-                        })}
-                    </p>
-                </motion.div>
+  const fetchTherapyData = async () => {
+    try {
+      const res = await fetch("/api/therapy?full=true", { cache: "no-store" });
+      if (!res.ok) return;
+      const { sessions } = (await res.json()) as { sessions: RawTherapySession[] };
+      setChatSessionCount(sessions.filter((s) => s.type === "chat").length);
+      setCallHistory(sessionsToCallRecords(sessions));
+      setEmotionLog(sessionsToEmotionLog(sessions));
+    } catch (error) {
+      console.error("Error loading therapy sessions:", error);
+    }
+  };
 
-                {/* Hero: wellness score + start therapy + quick actions */}
-                <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-                    <Card className="lg:col-span-3 relative overflow-hidden">
-                        <div className="absolute inset-0 bg-linear-to-br from-primary/10 via-accent/10 to-transparent" />
-                        <CardContent className="relative p-6 sm:p-8 space-y-6">
-                            <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-                                    <Sparkles className="w-5 h-5 text-primary" />
-                                </div>
-                                <div>
-                                    <h3 className="font-semibold font-heading text-lg">Start your session</h3>
-                                    <p className="text-sm text-muted-foreground">Whenever you&apos;re ready, we&apos;re here to listen</p>
-                                </div>
-                            </div>
+  useEffect(() => {
+    fetchTodayMoodScore();
+    fetchActivityCount();
+    fetchTherapyData();
+  }, []);
 
-                            <Button
-                                variant="default"
-                                className="w-full justify-center p-6 h-auto rounded-2xl bg-linear-to-r from-primary via-primary/90 to-accent hover:shadow-lg hover:shadow-primary/20 transition-all duration-300"
-                                onClick={handleStartTherapy}
-                            >
-                                <div className="flex items-center gap-4 w-full">
-                                    <MessageCircle className="w-6 h-6 shrink-0" />
-                                    <div className="flex flex-col items-start text-left">
-                                        <h4 className="font-semibold text-lg">Start Therapy</h4>
-                                        <p className="text-sm opacity-80">Begin a new conversation</p>
-                                    </div>
-                                </div>
-                            </Button>
+  const totalSessions = chatSessionCount + callHistory.length;
 
-                            <div className="grid grid-cols-2 gap-3">
-                                <Button
-                                    variant="outline"
-                                    className="flex h-27.5 flex-col items-center justify-center gap-2 rounded-2xl px-4 py-3 text-center hover:border-primary/50 transition-all duration-200"
-                                    onClick={() => setShowMoodModal(true)}
-                                >
-                                    <div className="w-9 h-9 rounded-full bg-accent/20 flex items-center justify-center">
-                                        <Heart className="w-4.5 h-4.5 text-accent-foreground" />
-                                    </div>
-                                    <div className="font-medium text-sm">Track Mood</div>
-                                </Button>
-                                <Button
-                                    variant="outline"
-                                    className="flex h-27.5 flex-col items-center justify-center gap-2 rounded-2xl px-4 py-3 text-center hover:border-primary/50 transition-all duration-200"
-                                    onClick={handleAICheckIn}
-                                >
-                                    <div className="w-9 h-9 rounded-full bg-secondary/25 flex items-center justify-center">
-                                        <BrainCircuit className="w-4.5 h-4.5 text-secondary-foreground" />
-                                    </div>
-                                    <div className="font-medium text-sm">Check-in</div>
-                                </Button>
-                            </div>
-                        </CardContent>
-                    </Card>
+  const completionRate = useMemo(() => {
+    let completed = 0;
+    const totalGoals = 2;
+    if (todayMoodScore !== null) completed += 1;
+    if (activityCount > 0 || totalSessions > 0) completed += 1;
+    return Math.round((completed / totalGoals) * 100);
+  }, [todayMoodScore, activityCount, totalSessions]);
 
-                    <Card className="lg:col-span-2 relative overflow-hidden">
-                        <div className="absolute inset-0 bg-linear-to-br from-secondary/15 via-accent/10 to-transparent" />
-                        <CardContent className="relative flex h-full flex-col items-center justify-center gap-3 p-8 text-center">
-                            <p className="text-sm font-medium text-muted-foreground">Wellness Score</p>
-                            <div className="relative flex h-32 w-32 items-center justify-center">
-                                <svg viewBox="0 0 100 100" className="h-full w-full -rotate-90">
-                                    <circle cx="50" cy="50" r="42" fill="none" stroke="var(--color-muted)" strokeWidth="9" />
-                                    {wellnessScore !== null && (
-                                        <circle
-                                            cx="50" cy="50" r="42" fill="none"
-                                            stroke="var(--color-primary)" strokeWidth="9" strokeLinecap="round"
-                                            strokeDasharray={2 * Math.PI * 42}
-                                            strokeDashoffset={2 * Math.PI * 42 * (1 - wellnessScore / 100)}
-                                            className="transition-all duration-700 ease-out"
-                                        />
-                                    )}
-                                </svg>
-                                <div className="absolute flex flex-col items-center">
-                                    <span className="text-3xl font-bold font-heading">{wellnessScore !== null ? wellnessScore : "--"}</span>
-                                    <span className="text-xs text-muted-foreground">/ 100</span>
-                                </div>
-                            </div>
-                            <p className="text-sm font-medium text-foreground">{wellnessScoreLabel(wellnessScore)}</p>
-                            <p className="text-xs text-muted-foreground">
-                                {wellnessScore !== null
-                                    ? "Based on mood, calm moments, and check-ins"
-                                    : "Log your mood or start a session to unlock your score"}
-                            </p>
-                        </CardContent>
-                    </Card>
-                </div>
+  const wellnessScore = useMemo(
+    () => computeWellnessScore({ moodScore: todayMoodScore, emotionLog, completionRate }),
+    [todayMoodScore, emotionLog, completionRate]
+  );
 
-                {/* Today's overview stats */}
-                <Card>
-                    <CardHeader>
-                        <CardTitle className="font-heading">Today&apos;s Overview</CardTitle>
-                        <CardDescription>Your wellness metrics for {format(new Date(), "MMMM dd, yyyy")}</CardDescription>
-                    </CardHeader>
-                    <CardContent className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-                        {wellnessStats.map((stat) => (
-                            <div key={stat.title} className={cn(
-                                "p-4 rounded-2xl transition-transform duration-200 hover:scale-[1.02]",
-                                stat.bgColor)}>
-                                <div className="flex items-center gap-2">
-                                    <stat.icon className={cn("w-5 h-5", stat.color)} />
-                                    <p className="text-sm font-medium">{stat.title}</p>
-                                </div>
-                                <p className="text-2xl font-bold font-heading mt-2">{stat.value}</p>
-                                <p className="text-xs text-muted-foreground mt-1">{stat.description}</p>
-                            </div>
-                        ))}
-                    </CardContent>
-                </Card>
+  const wellnessStats = [
+    {
+      title: "Mood Score",
+      value: todayMoodScore === null ? "No data" : `${todayMoodScore}/100`,
+      icon: Brain,
+      color: "text-primary",
+      bgColor: "bg-primary/10",
+      description: "Today's average mood",
+    },
+    {
+      title: "Goal Completion",
+      value: `${completionRate}%`,
+      icon: Trophy,
+      color: "text-amber-500 dark:text-amber-400",
+      bgColor: "bg-amber-500/10",
+      description: completionRate === 100 ? "All goals complete" : completionRate === 0 ? "Start daily check-in" : "In progress today",
+    },
+    {
+      title: "Total Sessions",
+      value: `${totalSessions} session${totalSessions === 1 ? "" : "s"}`,
+      icon: Heart,
+      color: "text-emerald-600 dark:text-emerald-400",
+      bgColor: "bg-emerald-500/10",
+      description: `${chatSessionCount} chat · ${callHistory.length} voice`,
+    },
+    {
+      title: "Check-ins Logged",
+      value: `${activityCount}`,
+      icon: Activity,
+      color: "text-blue-500",
+      bgColor: "bg-blue-500/10",
+      description: "Mindfulness activities",
+    },
+  ];
 
-                {/* Voice session + call history */}
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                    <div className="lg:col-span-1">
-                        <VoiceSessionCard onCallEnd={handleCallEnd} />
+  const handleMoodSubmit = async (data: { moodScore: number }) => {
+    setIsSavingMood(true);
+    try {
+      const res = await fetch("/api/mood", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+      if (!res.ok) throw new Error("Failed to save mood");
+      await fetchTodayMoodScore();
+      setShowMoodModal(false);
+      toast.success("Mood saved", { description: "Thanks for checking in with yourself today." });
+    } catch (error) {
+      console.error("Error saving mood:", error);
+      toast.error("Couldn't save your mood. Please try again.");
+    } finally {
+      setIsSavingMood(false);
+    }
+  };
+
+  const handleAICheckIn = () => {
+    setShowActivityLogger(true);
+  };
+
+  const handleStartTherapy = () => {
+    router.push("/therapy/new");
+  };
+
+  const handleStartVoice = () => {
+    router.push("/voice");
+  };
+
+  return (
+    <div className="min-h-screen bg-background pb-16">
+      <Container className="pt-28 space-y-8">
+        {/* Top Header Greeting */}
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+          className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border/40 pb-6"
+        >
+          <div className="space-y-1">
+            <div className="flex items-center gap-2">
+              <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-primary/10 text-primary border border-primary/20">
+                AI Mental Health Companion
+              </span>
+            </div>
+            <h1 className="text-3xl sm:text-4xl font-bold font-heading tracking-tight">
+              {getTimeGreeting()}{firstName ? `, ${firstName}` : ""} 👋
+            </h1>
+            <p className="text-sm text-muted-foreground">
+              {currentTime
+                ? format(currentTime, "EEEE, MMMM d, yyyy")
+                : "Loading date..."}
+            </p>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowMoodModal(true)}
+              className="rounded-full gap-2 border-primary/20 hover:border-primary/50"
+            >
+              <Heart className="w-4 h-4 text-primary" />
+              Track Mood
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleAICheckIn}
+              className="rounded-full gap-2 border-primary/20 hover:border-primary/50"
+            >
+              <BrainCircuit className="w-4 h-4 text-primary" />
+              Check-in
+            </Button>
+          </div>
+        </motion.div>
+
+        {/* Primary Flagship Features: Chat Therapy & Voice Studio (Twin Hero Showcase) */}
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <h2 className="text-xl font-bold font-heading">Choose Your Therapy Mode</h2>
+            <span className="text-xs text-muted-foreground">Select how you want to express yourself</span>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Feature 1: Chat Therapy Card */}
+            <motion.div
+              whileHover={{ y: -3 }}
+              transition={{ duration: 0.2 }}
+            >
+              <Card className="relative overflow-hidden border-primary/20 shadow-md h-full flex flex-col justify-between">
+                <div className="absolute inset-0 bg-gradient-to-br from-primary/10 via-primary/5 to-transparent pointer-events-none" />
+                <CardContent className="relative p-6 space-y-5 flex-1 flex flex-col justify-between">
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="w-12 h-12 rounded-2xl bg-primary/10 text-primary flex items-center justify-center">
+                        <MessageCircle className="w-6 h-6" />
+                      </div>
+                      <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-primary/15 text-primary border border-primary/20">
+                        Chat Counseling
+                      </span>
                     </div>
-                    <div className="lg:col-span-2">
-                        <CallHistory calls={callHistory} />
-                    </div>
-                </div>
 
-                {/* Emotion insights */}
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                    <div className="lg:col-span-2">
-                        <EmotionTrends entries={emotionLog} />
-                    </div>
-                    <div className="lg:col-span-1">
-                        <CrisisAlerts entries={emotionLog} />
-                    </div>
-                </div>
-
-                {/* Guided activities — lighter-weight section */}
-                <div className="space-y-3">
                     <div>
-                        <h2 className="text-lg font-semibold font-heading">Guided Wellness Activities</h2>
-                        <p className="text-sm text-muted-foreground">A few minutes of calm, whenever you need it</p>
+                      <h3 className="text-xl font-bold font-heading">AI Chat Therapy</h3>
+                      <p className="text-sm text-muted-foreground mt-1 leading-relaxed">
+                        Thoughtful text-based counseling with real-time emotion recognition, CBT techniques, and personalized guidance.
+                      </p>
                     </div>
-                    <AnxietyGames />
-                </div>
 
-                {/* Download report */}
-                <Card>
-                    <CardContent className="p-6 flex flex-col sm:flex-row items-center justify-between gap-4">
-                        <div className="flex items-center gap-4">
-                            <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                                <FileText className="w-6 h-6 text-primary" />
-                            </div>
-                            <div>
-                                <h3 className="font-semibold font-heading">Your Mental Health Report</h3>
-                                <p className="text-sm text-muted-foreground">See trends, session summaries, and insights</p>
-                            </div>
-                        </div>
-                        <Button className="gap-2 shrink-0 rounded-full" onClick={() => router.push("/reports")}>
-                            <Download className="w-4 h-4" />
-                            View Report
-                        </Button>
-                    </CardContent>
-                </Card>
-            </Container>
+                    <div className="flex items-center gap-4 text-xs text-muted-foreground pt-1">
+                      <span className="flex items-center gap-1">
+                        <CheckCircle2 className="w-3.5 h-3.5 text-primary" /> Instant Reply
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <CheckCircle2 className="w-3.5 h-3.5 text-primary" /> Emotion Tracking
+                      </span>
+                    </div>
+                  </div>
 
-            <Dialog open={showMoodModal} onOpenChange={setShowMoodModal}>
-                <DialogContent className="sm:max-w-106.25">
-                    <DialogHeader>
-                        <DialogTitle>How are you feeling?</DialogTitle>
-                        <DialogDescription>Move the slider to track your current mood.</DialogDescription>
-                    </DialogHeader>
-                    <MoodForm onSubmit={handleMoodSubmit} isLoading={isSavingMood} />
-                </DialogContent>
-            </Dialog>
+                  <Button
+                    onClick={handleStartTherapy}
+                    className="w-full justify-center gap-2 rounded-2xl h-12 text-sm font-semibold bg-primary hover:bg-primary/90 shadow-md shadow-primary/20 transition-all duration-200"
+                  >
+                    Start Chat Session
+                    <ArrowRight className="w-4 h-4" />
+                  </Button>
+                </CardContent>
+              </Card>
+            </motion.div>
 
-            <ActivityLogger
-                open={showActivityLogger} onOpenChange={setShowActivityLogger} onLogged={fetchActivityCount} />
+            {/* Feature 2: Voice Studio Card */}
+            <motion.div
+              whileHover={{ y: -3 }}
+              transition={{ duration: 0.2 }}
+            >
+              <Card className="relative overflow-hidden border-emerald-500/30 shadow-md h-full flex flex-col justify-between">
+                <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/10 via-teal-500/5 to-transparent pointer-events-none" />
+                <CardContent className="relative p-6 space-y-5 flex-1 flex flex-col justify-between">
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="w-12 h-12 rounded-2xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
+                        <Mic className="w-6 h-6" />
+                      </div>
+                      <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 flex items-center gap-1">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                        Live Voice AI
+                      </span>
+                    </div>
 
+                    <div>
+                      <h3 className="text-xl font-bold font-heading">Voice Therapy Studio</h3>
+                      <p className="text-sm text-muted-foreground mt-1 leading-relaxed">
+                        Talk out loud in real time with high-fidelity speech synthesis. Hands-free, natural, and therapeutic spoken dialogue.
+                      </p>
+                    </div>
+
+                    <div className="flex items-center gap-4 text-xs text-muted-foreground pt-1">
+                      <span className="flex items-center gap-1">
+                        <Headphones className="w-3.5 h-3.5 text-emerald-500" /> Spoken Dialogue
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <Zap className="w-3.5 h-3.5 text-emerald-500" /> Real-time Speech
+                      </span>
+                    </div>
+                  </div>
+
+                  <Button
+                    onClick={handleStartVoice}
+                    className="w-full justify-center gap-2 rounded-2xl h-12 text-sm font-semibold bg-emerald-600 hover:bg-emerald-700 text-white shadow-md shadow-emerald-500/20 transition-all duration-200"
+                  >
+                    Open Voice Studio
+                    <ArrowRight className="w-4 h-4" />
+                  </Button>
+                </CardContent>
+              </Card>
+            </motion.div>
+          </div>
         </div>
-    );
+
+        {/* Wellness Score Gauge + Overview Metrics */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          {/* Wellness Score Circular Card */}
+          <Card className="lg:col-span-4 relative overflow-hidden flex flex-col justify-center">
+            <div className="absolute inset-0 bg-gradient-to-br from-secondary/15 via-accent/10 to-transparent pointer-events-none" />
+            <CardContent className="relative flex flex-col items-center justify-center p-6 text-center space-y-4">
+              <div className="flex items-center justify-between w-full">
+                <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Wellness Score</span>
+                <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-primary/10 text-primary">Daily Assessment</span>
+              </div>
+
+              <div className="relative flex h-36 w-36 items-center justify-center my-2">
+                <svg viewBox="0 0 100 100" className="h-full w-full -rotate-90">
+                  <circle cx="50" cy="50" r="42" fill="none" stroke="var(--color-muted)" strokeWidth="8" />
+                  {wellnessScore !== null && (
+                    <circle
+                      cx="50"
+                      cy="50"
+                      r="42"
+                      fill="none"
+                      stroke="var(--color-primary)"
+                      strokeWidth="8"
+                      strokeLinecap="round"
+                      strokeDasharray={2 * Math.PI * 42}
+                      strokeDashoffset={2 * Math.PI * 42 * (1 - wellnessScore / 100)}
+                      className="transition-all duration-700 ease-out"
+                    />
+                  )}
+                </svg>
+                <div className="absolute flex flex-col items-center">
+                  <span className="text-4xl font-bold font-heading tracking-tight">
+                    {wellnessScore !== null ? wellnessScore : "--"}
+                  </span>
+                  <span className="text-xs text-muted-foreground">/ 100</span>
+                </div>
+              </div>
+
+              <div>
+                <p className="text-base font-semibold text-foreground">{wellnessScoreLabel(wellnessScore)}</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {wellnessScore !== null
+                    ? "Calculated from mood logs, chat emotion analytics, and check-ins"
+                    : "Log your mood or start a therapy session to activate your score"}
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Today's Overview Stat Cards */}
+          <div className="lg:col-span-8 grid grid-cols-2 sm:grid-cols-4 gap-4">
+            {wellnessStats.map((stat) => (
+              <Card key={stat.title} className="p-4 flex flex-col justify-between hover:shadow-md transition-shadow">
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div className={cn("p-2 rounded-xl", stat.bgColor)}>
+                      <stat.icon className={cn("w-4 h-4", stat.color)} />
+                    </div>
+                  </div>
+                  <p className="text-xs font-medium text-muted-foreground">{stat.title}</p>
+                  <p className="text-2xl font-bold font-heading">{stat.value}</p>
+                </div>
+                <p className="text-[11px] text-muted-foreground mt-3 pt-2 border-t border-border/40 truncate">
+                  {stat.description}
+                </p>
+              </Card>
+            ))}
+          </div>
+        </div>
+
+
+
+        {/* Emotion Insights & Crisis Alerts */}
+        <div className="space-y-4">
+          <h2 className="text-xl font-bold font-heading">Emotion Analytics & Support</h2>
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="lg:col-span-2">
+              <EmotionTrends entries={emotionLog} />
+            </div>
+            <div className="lg:col-span-1">
+              <CrisisAlerts entries={emotionLog} />
+            </div>
+          </div>
+        </div>
+
+        {/* Guided Activities */}
+        <div>
+          <AnxietyGames />
+        </div>
+
+        {/* Download & View Report Card */}
+        <Card className="overflow-hidden border-primary/20 bg-gradient-to-r from-primary/5 via-accent/5 to-transparent">
+          <CardContent className="p-6 flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center shrink-0">
+                <FileText className="w-6 h-6 text-primary" />
+              </div>
+              <div>
+                <h3 className="font-semibold font-heading text-lg">Detailed Mental Health Report</h3>
+                <p className="text-xs sm:text-sm text-muted-foreground">
+                  View full session summaries, emotion breakdown charts, and progress reports over time.
+                </p>
+              </div>
+            </div>
+            <Button className="gap-2 shrink-0 rounded-full px-6" onClick={() => router.push("/reports")}>
+              <Download className="w-4 h-4" />
+              View Full Report
+            </Button>
+          </CardContent>
+        </Card>
+      </Container>
+
+      {/* Mood Tracking Dialog */}
+      <Dialog open={showMoodModal} onOpenChange={setShowMoodModal}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle className="font-heading text-xl">How are you feeling?</DialogTitle>
+            <DialogDescription>Move the slider to log your current mood score.</DialogDescription>
+          </DialogHeader>
+          <MoodForm onSubmit={handleMoodSubmit} isLoading={isSavingMood} />
+        </DialogContent>
+      </Dialog>
+
+      {/* Activity Logger Component */}
+      <ActivityLogger
+        open={showActivityLogger}
+        onOpenChange={setShowActivityLogger}
+        onLogged={fetchActivityCount}
+      />
+    </div>
+  );
 }

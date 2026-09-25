@@ -1,4 +1,4 @@
-"use client"
+"use client";
 
 import { useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
@@ -12,6 +12,12 @@ import {
   Heart,
   Plus,
   AlertTriangle,
+  Mic,
+  Copy,
+  Check,
+  Volume2,
+  ArrowRight,
+  ShieldCheck,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence, type Variants } from "framer-motion";
@@ -32,6 +38,8 @@ import {
   fetchTherapyReply,
 } from "@/lib/therapy-client";
 import { generateReply } from "@/lib/mock-therapist-responses";
+import { toast } from "sonner";
+import Link from "next/link";
 
 const glowAnimation: Variants = {
   initial: { opacity: 0.5, scale: 1 },
@@ -59,10 +67,27 @@ interface Message {
   };
 }
 
-const SUGGESTED_PROMPTS = [
-  "I've been feeling anxious about work lately",
-  "I'm not sure how to explain how I feel today",
-  "I had a really good day and want to talk about it",
+const CATEGORIZED_PROMPTS = [
+  {
+    category: "Anxiety & Overthinking",
+    prompt: "I've been feeling anxious and overwhelmed by my thoughts lately.",
+    icon: "🧘",
+  },
+  {
+    category: "Emotional Check-in",
+    prompt: "I'm not sure how to express how I feel today, can you help me unpack it?",
+    icon: "💭",
+  },
+  {
+    category: "Stress Management",
+    prompt: "I feel burnt out from work/life pressures and need perspective.",
+    icon: "🌿",
+  },
+  {
+    category: "Positive Reflection",
+    prompt: "I had a great win today and want to reflect on positive feelings!",
+    icon: "✨",
+  },
 ];
 
 interface RawPersistedMessage {
@@ -89,6 +114,7 @@ export default function TherapyPage() {
   const [persistedSessionId, setPersistedSessionId] = useState<string | null>(null);
   const [sessionType, setSessionType] = useState<"chat" | "voice">("chat");
   const [restoredSessionId, setRestoredSessionId] = useState<string | null>(null);
+  const [copiedMessageIndex, setCopiedMessageIndex] = useState<number | null>(null);
 
   // Pure derived state during render — no effect needed
   const isRestoring = Boolean(
@@ -194,9 +220,6 @@ export default function TherapyPage() {
     const sessionId = await createTherapySession("chat");
     if (sessionId) {
       setPersistedSessionId(sessionId);
-      // Cosmetic URL update only — router.replace() to a new dynamic segment
-      // remounts this page and wipes in-progress chat state, so this bypasses
-      // the Next.js router entirely.
       window.history.replaceState(null, "", `/therapy/${sessionId}`);
     }
     return sessionId;
@@ -228,8 +251,6 @@ export default function TherapyPage() {
 
     const sessionId = await ensureSession();
     if (sessionId) {
-      // Awaited so the message is in the database before fetchTherapyReply
-      // asks the server to build conversation history from it.
       await persistTherapyMessage(sessionId, {
         role: "user",
         content: trimmed,
@@ -271,46 +292,92 @@ export default function TherapyPage() {
     sendMessage(message);
   };
 
+  const copyToClipboard = (text: string, index: number) => {
+    navigator.clipboard.writeText(text);
+    setCopiedMessageIndex(index);
+    toast.success("Copied to clipboard");
+    setTimeout(() => setCopiedMessageIndex(null), 2000);
+  };
+
+  const speakMessage = (text: string) => {
+    if (typeof window !== "undefined" && "speechSynthesis" in window) {
+      window.speechSynthesis.cancel();
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.rate = 0.98;
+      window.speechSynthesis.speak(utterance);
+    } else {
+      toast.error("Speech synthesis not supported in this browser");
+    }
+  };
+
   if (isRestoring && !persistedSessionId) {
     return <TherapySkeleton />;
   }
 
   return (
     <div className="relative max-w-7xl mx-auto px-4 pb-4">
-      <div className="flex h-[calc(100vh-8.5rem)] min-h-[600px] mt-20 pt-3 mb-6 sm:mb-8 gap-0 overflow-hidden">
-        <div className="flex flex-1 rounded-2xl border shadow-sm overflow-hidden">
+      <div className="flex h-[calc(100vh-8.5rem)] min-h-[620px] mt-20 pt-3 mb-6 sm:mb-8 gap-0 overflow-hidden">
+        <div className="flex flex-1 rounded-3xl border shadow-md overflow-hidden bg-card">
           {/* ── Left sidebar: session history ── */}
           <SessionSidebar />
 
           {/* ── Main chat area ── */}
           <div className="flex-1 flex flex-col overflow-hidden bg-card">
-            <div className="flex items-center gap-2 p-4 border-b">
-              <div className="w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center">
-                <Bot className="w-5 h-5" /></div>
-              <div className="flex-1">
-                <div className="flex items-center gap-2">
-                  <h2 className="font-semibold font-heading">AI Therapist</h2>
-                  {sessionType === "voice" && (
-                    <Badge variant="outline" className="text-xs bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20 font-medium">
-                      Voice Session
-                    </Badge>
-                  )}
+            {/* Top Control Header */}
+            <div className="flex items-center justify-between p-4 border-b bg-card/80 backdrop-blur shrink-0 gap-3">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="relative">
+                  <div className="w-9 h-9 rounded-full bg-primary/10 text-primary flex items-center justify-center ring-1 ring-primary/20 shrink-0">
+                    <Bot className="w-5 h-5" />
+                  </div>
+                  <span className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-emerald-500 ring-2 ring-card" />
                 </div>
-                <p className="text-sm text-muted-foreground">{messages.length} messages</p>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    <h2 className="font-semibold font-heading text-base truncate">AI Therapist</h2>
+                    {sessionType === "voice" && (
+                      <Badge variant="outline" className="text-[11px] bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20 font-medium">
+                        Voice Session
+                      </Badge>
+                    )}
+                  </div>
+                  <p className="text-xs text-muted-foreground truncate">
+                    {messages.length === 0 ? "Ready for conversation" : `${messages.length} messages in session`}
+                  </p>
+                </div>
               </div>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="gap-1.5 rounded-full"
-                onClick={handleNewChat}
-                disabled={messages.length === 0}
-              >
-                <Plus className="w-3.5 h-3.5" />
-                New Chat
-              </Button>
+
+              {/* Action buttons in header */}
+              <div className="flex items-center gap-2 shrink-0">
+                {/* Switch to Voice Studio Button */}
+                <Button
+                  asChild
+                  variant="outline"
+                  size="sm"
+                  className="gap-1.5 rounded-full text-xs border-emerald-500/30 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/10"
+                  title="Switch to Voice Therapy Mode"
+                >
+                  <Link href="/voice">
+                    <Mic className="w-3.5 h-3.5 text-emerald-500" />
+                    <span className="hidden sm:inline">Voice Mode</span>
+                  </Link>
+                </Button>
+
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="gap-1.5 rounded-full text-xs"
+                  onClick={handleNewChat}
+                  disabled={messages.length === 0}
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>New Chat</span>
+                </Button>
+              </div>
             </div>
 
+            {/* Crisis Alert Banner */}
             {(crisisLevel === "medium" || crisisLevel === "high") && (
               <motion.div
                 initial={{ opacity: 0, height: 0 }}
@@ -324,7 +391,7 @@ export default function TherapyPage() {
                   <p className="text-sm font-semibold text-crisis-foreground dark:text-crisis">
                     We hear that things feel heavy right now
                   </p>
-                  <p className="text-sm text-foreground/80">
+                  <p className="text-xs text-foreground/80">
                     You&apos;re not alone in this. If you&apos;re in immediate danger,
                     please reach out to your local emergency number or a crisis
                     helpline — support is available right now.
@@ -333,69 +400,75 @@ export default function TherapyPage() {
               </motion.div>
             )}
 
+            {/* Empty State Welcome Screen */}
             {messages.length === 0 ? (
-              // Welcome screen with suggested questions
-              <div className="flex-1 flex items-center justify-center p-4">
-                <div className="max-w-2xl w-full space-y-8">
-                  <div className="text-center space-y-4">
+              <div className="flex-1 flex items-center justify-center p-6 overflow-y-auto">
+                <div className="max-w-2xl w-full space-y-6 text-center">
+                  <div className="space-y-3">
                     <div className="relative inline-flex flex-col items-center">
                       <motion.div
-                        className="absolute inset-0 bg-primary/20 blur-2xl rounded-full"
+                        className="absolute inset-0 bg-primary/20 blur-3xl rounded-full"
                         initial="initial"
                         animate="animate"
                         variants={glowAnimation}
                       />
-                      <div className="relative flex items-center gap-2 text-2xl font-semibold">
-                        <div className="relative">
-                          <Sparkles className="w-6 h-6 text-primary" />
-                          <motion.div
-                            className="absolute inset-0 text-primary"
-                            initial="initial"
-                            animate="animate"
-                            variants={glowAnimation}
-                          >
-                            <Sparkles className="w-6 h-6" />
-                          </motion.div>
+                      <div className="relative flex items-center gap-2.5 text-3xl font-bold font-heading">
+                        <div className="w-12 h-12 rounded-2xl bg-primary/10 text-primary flex items-center justify-center shadow-inner">
+                          <Sparkles className="w-6 h-6" />
                         </div>
-                        <span className="font-heading bg-linear-to-r from-primary/90 to-primary bg-clip-text text-transparent">
-                          AI Therapist
+                        <span className="bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+                          AI Therapy Assistant
                         </span>
                       </div>
-                      <p className="text-muted-foreground mt-2">
-                        How can I assist you today?
-                      </p>
                     </div>
+                    <p className="text-sm text-muted-foreground max-w-lg mx-auto leading-relaxed">
+                      Welcome to your safe, non-judgmental space. How are you feeling today? Select a topic below or type your thoughts to begin.
+                    </p>
                   </div>
 
-                  <div className="flex flex-col gap-2">
-                    {SUGGESTED_PROMPTS.map((prompt) => (
+                  {/* Categorized Prompts Grid */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 text-left">
+                    {CATEGORIZED_PROMPTS.map((item) => (
                       <button
-                        key={prompt}
+                        key={item.category}
                         type="button"
-                        onClick={() => sendMessage(prompt)}
-                        className="text-left text-sm px-4 py-3 rounded-xl border border-primary/10 hover:border-primary/30 hover:bg-primary/5 transition-colors duration-200"
+                        onClick={() => sendMessage(item.prompt)}
+                        className="group flex flex-col justify-between p-4 rounded-2xl border border-border/60 hover:border-primary/40 hover:bg-primary/5 transition-all duration-200 text-left bg-card/60 shadow-xs"
                       >
-                        {prompt}
+                        <div className="flex items-center justify-between w-full mb-1">
+                          <span className="text-lg">{item.icon}</span>
+                          <ArrowRight className="w-3.5 h-3.5 text-muted-foreground group-hover:text-primary transition-transform group-hover:translate-x-0.5" />
+                        </div>
+                        <h4 className="text-xs font-semibold font-heading text-foreground group-hover:text-primary transition-colors">
+                          {item.category}
+                        </h4>
+                        <p className="text-[11px] text-muted-foreground mt-0.5 line-clamp-2">
+                          &ldquo;{item.prompt}&rdquo;
+                        </p>
                       </button>
                     ))}
+                  </div>
+
+                  <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground pt-2">
+                    <ShieldCheck className="w-3.5 h-3.5 text-primary" />
+                    <span>Confidential & Private Session</span>
                   </div>
                 </div>
               </div>
             ) : (
+              /* Message Thread List */
               <div ref={chatContainerRef} className="flex-1 overflow-y-auto">
-                <div className="max-w-3xl mx-auto">
+                <div className="max-w-3xl mx-auto py-4">
                   <AnimatePresence initial={false}>
-                    {messages.map((msg) => (
+                    {messages.map((msg, idx) => (
                       <motion.div
-                        key={msg.timestamp.toISOString()}
-                        initial={{ opacity: 0, y: 20 }}
+                        key={msg.timestamp.toISOString() + idx}
+                        initial={{ opacity: 0, y: 15 }}
                         animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.3 }}
+                        transition={{ duration: 0.25 }}
                         className={cn(
-                          "px-6 py-8",
-                          msg.role === "assistant"
-                            ? "bg-muted/30"
-                            : "bg-background"
+                          "px-6 py-6 border-b border-border/20 transition-colors",
+                          msg.role === "assistant" ? "bg-muted/30" : "bg-background"
                         )}
                       >
                         <div className="flex gap-4">
@@ -411,11 +484,9 @@ export default function TherapyPage() {
                             )}
                           </div>
                           <div className="flex-1 space-y-2 overflow-hidden min-h-[2rem]">
-                            <div className="flex items-center justify-between">
-                              <p className="font-medium text-sm">
-                                {msg.role === "assistant"
-                                  ? "AI Therapist"
-                                  : "You"}
+                            <div className="flex items-center justify-between gap-2">
+                              <p className="font-semibold text-sm font-heading">
+                                {msg.role === "assistant" ? "AI Therapist" : "You"}
                               </p>
                               <div className="flex items-center gap-1.5 flex-wrap">
                                 {msg.metadata?.technique && (
@@ -469,13 +540,36 @@ export default function TherapyPage() {
                                 })()}
                               </div>
                             </div>
-                            <div className="prose prose-sm dark:prose-invert leading-relaxed">
+                            <div className="prose prose-sm dark:prose-invert leading-relaxed text-sm">
                               <ReactMarkdown>{msg.content}</ReactMarkdown>
                             </div>
-                            {msg.metadata?.goal && (
-                              <p className="text-xs text-muted-foreground mt-2">
-                                Goal: {msg.metadata.goal}
-                              </p>
+
+                            {/* Message Actions Bar (Copy & Read Aloud) */}
+                            {msg.role === "assistant" && (
+                              <div className="flex items-center gap-2 pt-1">
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-6 w-6 rounded-md text-muted-foreground hover:text-foreground"
+                                  onClick={() => copyToClipboard(msg.content, idx)}
+                                  title="Copy message"
+                                >
+                                  {copiedMessageIndex === idx ? (
+                                    <Check className="w-3.5 h-3.5 text-emerald-500" />
+                                  ) : (
+                                    <Copy className="w-3.5 h-3.5" />
+                                  )}
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-6 w-6 rounded-md text-muted-foreground hover:text-foreground"
+                                  onClick={() => speakMessage(msg.content)}
+                                  title="Read message aloud"
+                                >
+                                  <Volume2 className="w-3.5 h-3.5" />
+                                </Button>
+                              </div>
                             )}
                           </div>
                         </div>
@@ -485,9 +579,9 @@ export default function TherapyPage() {
 
                   {isTyping && (
                     <motion.div
-                      initial={{ opacity: 0, y: 20 }}
+                      initial={{ opacity: 0, y: 15 }}
                       animate={{ opacity: 1, y: 0 }}
-                      className="px-6 py-8 flex gap-4 bg-muted/30"
+                      className="px-6 py-6 flex gap-4 bg-muted/30 border-b border-border/20"
                     >
                       <div className="w-8 h-8 shrink-0">
                         <div className="w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center ring-1 ring-primary/20">
@@ -495,12 +589,12 @@ export default function TherapyPage() {
                         </div>
                       </div>
                       <div className="flex-1 space-y-2">
-                        <p className="font-medium text-sm">AI Therapist</p>
-                        <div className="flex items-center gap-1 py-1" aria-label="AI Therapist is typing">
+                        <p className="font-semibold text-sm font-heading">AI Therapist</p>
+                        <div className="flex items-center gap-1.5 py-1" aria-label="AI Therapist is typing">
                           {[0, 1, 2].map((i) => (
                             <span
                               key={i}
-                              className="h-1.5 w-1.5 rounded-full bg-primary/60 animate-bounce"
+                              className="h-2 w-2 rounded-full bg-primary/60 animate-bounce"
                               style={{ animationDelay: `${i * 0.15}s` }}
                             />
                           ))}
@@ -513,11 +607,11 @@ export default function TherapyPage() {
               </div>
             )}
 
-            {/* Input area */}
-            <div className="border-t bg-background/50 backdrop-blur supports-backdrop-filter:bg-background/50 p-4">
+            {/* Input Bar */}
+            <div className="border-t bg-background/80 backdrop-blur p-4 shrink-0">
               <form
                 onSubmit={handleSubmit}
-                className="max-w-3xl mx-auto flex gap-4 items-end relative"
+                className="max-w-3xl mx-auto flex gap-3 items-end relative"
               >
                 <div className="flex-1 relative group">
                   <textarea
@@ -526,16 +620,15 @@ export default function TherapyPage() {
                     placeholder={
                       isChatPaused
                         ? "Complete the activity to continue..."
-                        : "Ask me anything..."
+                        : "Type your message here..."
                     }
                     className={cn(
                       "w-full resize-none rounded-2xl border bg-background",
-                      "p-3 pr-12 min-h-12 max-h-50",
+                      "p-3 pr-12 min-h-12 max-h-48 text-sm",
                       "focus:outline-none focus:ring-2 focus:ring-primary/50",
-                      "transition-all duration-200",
+                      "transition-all duration-200 shadow-xs",
                       "placeholder:text-muted-foreground/70",
-                      (isTyping || isChatPaused) &&
-                      "opacity-50 cursor-not-allowed"
+                      (isTyping || isChatPaused) && "opacity-50 cursor-not-allowed"
                     )}
                     rows={1}
                     disabled={isTyping || isChatPaused}
@@ -550,13 +643,11 @@ export default function TherapyPage() {
                     type="submit"
                     size="icon"
                     className={cn(
-                      "absolute right-1.5 bottom-3.5 h-9 w-9",
+                      "absolute right-2 bottom-2.5 h-8 w-8",
                       "rounded-xl transition-all duration-200",
-                      "bg-primary hover:bg-primary/90",
-                      "shadow-sm shadow-primary/20",
-                      (isTyping || isChatPaused || !message.trim()) &&
-                      "opacity-50 cursor-not-allowed",
-                      "group-hover:scale-105 group-focus-within:scale-105"
+                      "bg-primary hover:bg-primary/90 text-primary-foreground",
+                      "shadow-xs shadow-primary/20",
+                      (isTyping || isChatPaused || !message.trim()) && "opacity-50 cursor-not-allowed"
                     )}
                     disabled={isTyping || isChatPaused || !message.trim()}
                   >
@@ -564,13 +655,10 @@ export default function TherapyPage() {
                   </Button>
                 </div>
               </form>
-              <div className="mt-2 text-xs text-center text-muted-foreground">
-                Press <kbd className="px-2 py-0.5 rounded bg-muted">Enter ↵</kbd>{" "}
-                to send,
-                <kbd className="px-2 py-0.5 rounded bg-muted ml-1">
-                  Shift + Enter
-                </kbd>{" "}
-                for new line
+              <div className="mt-2 text-[11px] text-center text-muted-foreground flex items-center justify-center gap-3">
+                <span>Press <kbd className="px-1.5 py-0.5 rounded bg-muted font-mono text-[10px]">Enter ↵</kbd> to send</span>
+                <span>•</span>
+                <span><kbd className="px-1.5 py-0.5 rounded bg-muted font-mono text-[10px]">Shift + Enter</kbd> for line break</span>
               </div>
             </div>
           </div>
@@ -584,10 +672,8 @@ export default function TherapyPage() {
               emotionCounts={emotionCounts}
             />
           </div>
-
         </div>
       </div>
     </div>
-
   );
 }
