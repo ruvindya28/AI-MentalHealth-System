@@ -16,14 +16,22 @@ import {
   Calendar,
   ShieldCheck,
   Award,
+  Filter,
 } from "lucide-react";
 import { Container } from "@/components/ui/container";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { sessionsToEmotionLog, type EmotionLogEntry } from "@/lib/emotion-log";
-import { EMOTION_COLORS } from "@/lib/mock-emotion-analyzer";
+import { EMOTION_COLORS, EMOTION_ORDER } from "@/lib/mock-emotion-analyzer";
 import {
   getEmotionDistribution,
   getTrend,
@@ -46,6 +54,8 @@ export default function ReportsPage() {
   const [rawSessions, setRawSessions] = useState<RawTherapySessionItem[]>([]);
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [trendDays, setTrendDays] = useState<number>(7);
+  const [selectedEmotionFilter, setSelectedEmotionFilter] = useState<string>("all");
 
   const fetchReportData = async () => {
     try {
@@ -79,10 +89,28 @@ export default function ReportsPage() {
     fetchReportData();
   }, []);
 
+  const filteredEntries = useMemo(() => {
+    if (selectedEmotionFilter === "all") return entries;
+    return entries.filter((e) => e.emotion === selectedEmotionFilter);
+  }, [entries, selectedEmotionFilter]);
+
   const distribution = useMemo(() => getEmotionDistribution(entries), [entries]);
-  const trend = useMemo(() => getTrend(entries, moodEntries, 7), [entries, moodEntries]);
+  const trend = useMemo(
+    () => getTrend(filteredEntries, moodEntries, trendDays),
+    [filteredEntries, moodEntries, trendDays]
+  );
   const sessions = useMemo(() => getSessionSummaries(rawSessions, entries), [rawSessions, entries]);
   const insights = useMemo(() => getWellnessInsights(entries, moodEntries), [entries, moodEntries]);
+
+  const matchingCheckInsCount = useMemo(() => {
+    return filteredEntries.length;
+  }, [filteredEntries]);
+
+  const avgScore = useMemo(() => {
+    const valid = trend.filter((p) => p.score !== null);
+    if (valid.length === 0) return null;
+    return Math.round(valid.reduce((sum, p) => sum + (p.score ?? 0), 0) / valid.length);
+  }, [trend]);
 
   const handleDownload = () => {
     setIsGeneratingPdf(true);
@@ -101,6 +129,38 @@ export default function ReportsPage() {
     } catch (error) {
       console.error("Error generating PDF report:", error);
       toast.error("Couldn't generate PDF report. Please try again.");
+    } finally {
+      setIsGeneratingPdf(false);
+    }
+  };
+
+  const handleDownloadFiltered = () => {
+    setIsGeneratingPdf(true);
+    try {
+      const filteredForExport = selectedEmotionFilter === "all"
+        ? entries
+        : entries.filter((e) => e.emotion === selectedEmotionFilter);
+
+      const filteredDist = getEmotionDistribution(filteredForExport);
+      const filteredTrend = getTrend(filteredForExport, moodEntries, trendDays);
+      const filteredSessions = getSessionSummaries(rawSessions, filteredForExport);
+
+      generatePDFReport({
+        user,
+        entries: filteredForExport,
+        distribution: filteredDist,
+        trend: filteredTrend,
+        sessions: filteredSessions,
+        insights,
+      });
+
+      const emotionLabel = selectedEmotionFilter === "all" ? "Emotional Analysis" : `${selectedEmotionFilter} Analysis`;
+      toast.success(`${emotionLabel} PDF Report Downloaded`, {
+        description: `Exported report for ${trendDays} days date range (${selectedEmotionFilter === "all" ? "All emotions" : selectedEmotionFilter}).`,
+      });
+    } catch (error) {
+      console.error("Error generating filtered PDF report:", error);
+      toast.error("Couldn't generate filtered PDF report. Please try again.");
     } finally {
       setIsGeneratingPdf(false);
     }
@@ -135,48 +195,97 @@ export default function ReportsPage() {
               Emotional stability trends, mood breakdown charts, and session summaries.
             </p>
           </div>
-
-          <div className="flex items-center gap-3">
-            <Button
-              onClick={handleDownload}
-              disabled={isGeneratingPdf || isLoading}
-              className="gap-2 rounded-full px-6 h-11 text-sm font-semibold bg-primary hover:bg-primary/90 text-primary-foreground shadow-md shadow-primary/20 transition-all shrink-0 active:scale-95"
-            >
-              {isGeneratingPdf ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <Download className="w-4 h-4" />
-              )}
-              Download PDF Report
-            </Button>
-          </div>
         </motion.div>
 
 
 
         {/* Analytics Charts Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Trend Sparkline Chart */}
-          <Card className="lg:col-span-2 border-border/60 shadow-sm rounded-3xl overflow-hidden">
-            <CardHeader className="pb-2">
-              <div className="flex items-center justify-between">
+          {/* Emotional Analysis Component */}
+          <Card className="lg:col-span-2 border-border/60 shadow-sm rounded-3xl overflow-hidden bg-card/70 backdrop-blur">
+            <CardHeader className="pb-3 border-b border-border/40 space-y-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div className="flex items-center gap-2.5">
                   <div className="w-9 h-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
                     <TrendingUp className="w-5 h-5" />
                   </div>
                   <div>
-                    <CardTitle className="font-heading text-lg">7-Day Emotional Stability Trend</CardTitle>
+                    <CardTitle className="font-heading text-lg">
+                      {selectedEmotionFilter === "all" ? "Emotional Stability Analysis" : `${selectedEmotionFilter} Analysis & Trend`}
+                    </CardTitle>
                     <CardDescription className="text-xs">
-                      Score trajectory combining mood check-ins and session sentiment
+                      Filter analytics by emotion, date or month &amp; export filtered PDF reports
                     </CardDescription>
                   </div>
                 </div>
-                <Badge variant="outline" className="text-[11px] font-medium bg-primary/5 border-primary/20 text-primary">
-                  Last 7 Days
-                </Badge>
+
+                <Button
+                  onClick={handleDownloadFiltered}
+                  disabled={isGeneratingPdf || isLoading}
+                  size="sm"
+                  className="gap-1.5 rounded-full px-4 text-xs font-semibold bg-primary hover:bg-primary/90 text-primary-foreground shadow-xs shrink-0 active:scale-95"
+                >
+                  {isGeneratingPdf ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  ) : (
+                    <Download className="w-3.5 h-3.5" />
+                  )}
+                  <span>Download Report</span>
+                </Button>
+              </div>
+
+              {/* Filtering Toolbar */}
+              <div className="flex flex-wrap items-center gap-2.5 pt-1">
+                {/* Date Range / Month Select */}
+                <div className="flex items-center gap-1.5 min-w-[130px]">
+                  <Calendar className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                  <Select value={String(trendDays)} onValueChange={(val) => setTrendDays(Number(val))}>
+                    <SelectTrigger className="w-full rounded-2xl bg-background border-border/60 text-xs font-medium">
+                      <SelectValue placeholder="Date Range" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="7">Last 7 Days</SelectItem>
+                      <SelectItem value="14">Last 14 Days</SelectItem>
+                      <SelectItem value="30">Last 30 Days (Month)</SelectItem>
+                      <SelectItem value="90">Last 90 Days (Quarter)</SelectItem>
+                      <SelectItem value="365">All Time</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Emotion Select */}
+                <div className="flex items-center gap-1.5 min-w-[140px]">
+                  <Filter className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                  <Select value={selectedEmotionFilter} onValueChange={setSelectedEmotionFilter}>
+                    <SelectTrigger className="w-full rounded-2xl bg-background border-border/60 text-xs font-medium">
+                      <SelectValue placeholder="Emotion Filter" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Emotions</SelectItem>
+                      {EMOTION_ORDER.map((emotion) => (
+                        <SelectItem key={emotion} value={emotion}>
+                          {emotion}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Analytics Metrics Pills */}
+                <div className="flex items-center gap-2 ml-auto text-xs text-muted-foreground flex-wrap">
+                  <span className="px-2.5 py-1 rounded-full bg-primary/10 text-primary font-semibold text-[11px] border border-primary/20">
+                    {matchingCheckInsCount} Check-in{matchingCheckInsCount === 1 ? "" : "s"}
+                  </span>
+                  {avgScore !== null && (
+                    <span className="px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-semibold text-[11px] border border-emerald-500/20">
+                      Avg Score: {avgScore}/100
+                    </span>
+                  )}
+                </div>
               </div>
             </CardHeader>
-            <CardContent className="pt-4">
+
+            <CardContent className="pt-4 space-y-4">
               {isLoading ? (
                 <Skeleton className="h-44 w-full rounded-2xl" />
               ) : (
