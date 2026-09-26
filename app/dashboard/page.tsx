@@ -19,6 +19,8 @@ import {
   Headphones,
   Zap,
   CheckCircle2,
+  ArrowDown,
+  X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -62,6 +64,7 @@ export default function DashboardPage() {
   const [activityCount, setActivityCount] = useState(0);
   const [chatSessionCount, setChatSessionCount] = useState(0);
   const [emotionLog, setEmotionLog] = useState<EmotionLogEntry[]>([]);
+  const [dismissedStressAlert, setDismissedStressAlert] = useState(false);
 
   const router = useRouter();
 
@@ -146,6 +149,21 @@ export default function DashboardPage() {
     () => computeWellnessScore({ moodScore: todayMoodScore, emotionLog, completionRate }),
     [todayMoodScore, emotionLog, completionRate]
   );
+
+  const isUnderStress = useMemo(() => {
+    if (todayMoodScore === null) return true; // Show initial calming care recommendation upon login
+    if (todayMoodScore <= 60) return true;
+    if (wellnessScore !== null && wellnessScore < 70) return true;
+    const stressEmotions = ["Anxiety", "Fear", "Sadness", "Overwhelmed", "Stress", "Crisis"];
+    return emotionLog.some((entry) => stressEmotions.includes(entry.emotion));
+  }, [todayMoodScore, wellnessScore, emotionLog]);
+
+  const scrollToGames = () => {
+    const el = document.getElementById("anxiety-games");
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  };
 
   const wellnessStats = [
     {
@@ -261,6 +279,57 @@ export default function DashboardPage() {
             </Button>
           </div>
         </motion.div>
+
+        {/* Stress Detection Alert Card */}
+        {isUnderStress && !dismissedStressAlert && (
+          <motion.div
+            initial={{ opacity: 0, y: -10, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -10 }}
+            transition={{ duration: 0.4 }}
+          >
+            <Card className="relative overflow-hidden border-amber-500/30 bg-gradient-to-r from-amber-500/15 via-orange-500/10 to-primary/15 p-5 sm:p-6 rounded-3xl shadow-lg">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                <div className="flex items-start sm:items-center gap-4">
+                  <div className="w-12 h-12 rounded-2xl bg-amber-500/20 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0 shadow-xs">
+                    <Sparkles className="w-6 h-6 animate-pulse" />
+                  </div>
+                  <div className="space-y-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h3 className="font-heading font-bold text-base sm:text-lg text-foreground">
+                        Elevated Stress Level Detected
+                      </h3>
+                      <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-500/30">
+                        Calming Activity Available
+                      </span>
+                    </div>
+                    <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed max-w-2xl">
+                      We noticed your recent mood or wellness indicators suggest stress. Take a quick moment for yourself with our 4 guided calming exercises below.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3 w-full sm:w-auto justify-end">
+                  <Button
+                    onClick={scrollToGames}
+                    className="rounded-full px-5 h-11 text-xs sm:text-sm font-semibold bg-amber-600 hover:bg-amber-700 text-white shadow-md shadow-amber-500/20 gap-2 transition-all duration-200 hover:scale-105"
+                  >
+                    <span>Play Calming Games</span>
+                    <ArrowDown className="w-4 h-4 animate-bounce" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setDismissedStressAlert(true)}
+                    className="w-9 h-9 rounded-full text-muted-foreground hover:text-foreground hover:bg-amber-500/10 shrink-0"
+                  >
+                    <X className="w-4 h-4" />
+                  </Button>
+                </div>
+              </div>
+            </Card>
+          </motion.div>
+        )}
 
         {/* Primary Flagship Features: Chat Therapy & Voice Studio (Twin Hero Showcase) */}
         <div className="space-y-3">
@@ -436,44 +505,10 @@ export default function DashboardPage() {
 
 
 
-        {/* Emotion Insights & Crisis Alerts */}
-        <div className="space-y-4">
-          <h2 className="text-xl font-bold font-heading">Emotion Analytics & Support</h2>
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div className="lg:col-span-2">
-              <EmotionTrends entries={emotionLog} />
-            </div>
-            <div className="lg:col-span-1">
-              <CrisisAlerts entries={emotionLog} />
-            </div>
-          </div>
-        </div>
-
         {/* Guided Activities */}
-        <div>
+        <div id="anxiety-games">
           <AnxietyGames />
         </div>
-
-        {/* Download & View Report Card */}
-        <Card className="overflow-hidden border-primary/20 bg-gradient-to-r from-primary/5 via-accent/5 to-transparent">
-          <CardContent className="p-6 flex flex-col sm:flex-row items-center justify-between gap-4">
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center shrink-0">
-                <FileText className="w-6 h-6 text-primary" />
-              </div>
-              <div>
-                <h3 className="font-semibold font-heading text-lg">Detailed Mental Health Report</h3>
-                <p className="text-xs sm:text-sm text-muted-foreground">
-                  View full session summaries, emotion breakdown charts, and progress reports over time.
-                </p>
-              </div>
-            </div>
-            <Button className="gap-2 shrink-0 rounded-full px-6" onClick={() => router.push("/reports")}>
-              <Download className="w-4 h-4" />
-              View Full Report
-            </Button>
-          </CardContent>
-        </Card>
       </Container>
 
       {/* Mood Tracking Dialog */}
