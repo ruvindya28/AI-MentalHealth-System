@@ -2,7 +2,7 @@
 
 import { Ripple } from "@/components/ui/ripple";
 import { useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import Link from "next/link";
 import { 
   ArrowRight, 
@@ -14,9 +14,7 @@ import {
   MessageSquareHeart, 
   HeartPulse, 
   TrendingUp, 
-  Sparkles,
-  ShieldCheck,
-  CheckCircle2
+  Sparkles
 } from "lucide-react";
 import { Slider } from "@/components/ui/slider";
 import { Button } from "@/components/ui/button";
@@ -25,9 +23,7 @@ import {
   CardContent,
   CardHeader,
 } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-import { analyzeText, EMOTION_COLORS, CRISIS_COLORS } from "@/lib/mock-emotion-analyzer";
 
 export default function Home() {
   const emotions = [
@@ -93,10 +89,8 @@ export default function Home() {
   ];
 
   const [emotion, setEmotion] = useState(50);
-  const [demoText, setDemoText] = useState("");
 
   const currentEmotion = emotions.find((em) => Math.abs(emotion - em.value) < 15) || emotions[2];
-  const demoAnalysis = demoText.trim().length > 3 ? analyzeText(demoText) : null;
 
   return (
     <div className="flex flex-col min-h-screen overflow-hidden bg-background">
@@ -234,85 +228,6 @@ export default function Home() {
         </motion.div>
       </section>
 
-      {/* Live AI Interactive Preview Section */}
-      <section className="relative py-16 px-4">
-        <div className="max-w-3xl mx-auto">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
-            viewport={{ once: true }}
-          >
-            <Card className="border-primary/20 bg-card/70 backdrop-blur-xl shadow-xl rounded-3xl overflow-hidden p-6 sm:p-8">
-              <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-2xl bg-primary/10 text-primary flex items-center justify-center">
-                    <BrainCircuit className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <h3 className="font-heading font-bold text-lg sm:text-xl text-foreground">
-                      See Our AI In Action
-                    </h3>
-                    <p className="text-xs text-muted-foreground">
-                      Real-time emotion &amp; crisis analysis preview
-                    </p>
-                  </div>
-                </div>
-                <Badge variant="secondary" className="px-3 py-1 rounded-full text-xs font-semibold bg-primary/10 text-primary border-0">
-                  Live Interactive Demo
-                </Badge>
-              </div>
-
-              <div className="space-y-4 pt-2">
-                <textarea
-                  value={demoText}
-                  onChange={(e) => setDemoText(e.target.value)}
-                  placeholder="Type how you're feeling right now... e.g., 'I've been feeling overwhelmed and anxious about work lately...'"
-                  rows={3}
-                  className="w-full resize-none rounded-2xl border border-border/70 bg-background/80 p-4 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary placeholder:text-muted-foreground/60 transition-all duration-200"
-                />
-
-                <AnimatePresence>
-                  {demoAnalysis && (
-                    <motion.div
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0 }}
-                      className="p-4 rounded-2xl bg-muted/40 border border-border/50 flex flex-wrap items-center gap-3"
-                    >
-                      <span
-                        className={cn(
-                          "px-3 py-1.5 rounded-full text-xs sm:text-sm font-semibold border flex items-center gap-1.5",
-                          EMOTION_COLORS[demoAnalysis.emotion].bg,
-                          EMOTION_COLORS[demoAnalysis.emotion].text,
-                          EMOTION_COLORS[demoAnalysis.emotion].border
-                        )}
-                      >
-                        <span className={cn("w-2 h-2 rounded-full", EMOTION_COLORS[demoAnalysis.emotion].dot)} />
-                        Detected: {demoAnalysis.emotion} ({demoAnalysis.confidence}% confidence)
-                      </span>
-                      <span
-                        className={cn(
-                          "px-3 py-1.5 rounded-full text-xs sm:text-sm font-semibold bg-background border border-border/60",
-                          CRISIS_COLORS[demoAnalysis.crisisLevel].text
-                        )}
-                      >
-                        Crisis Risk: {CRISIS_COLORS[demoAnalysis.crisisLevel].label}
-                      </span>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-
-                <div className="flex items-center gap-2 pt-2 border-t border-border/40 text-xs text-muted-foreground">
-                  <ShieldCheck className="w-4 h-4 text-primary shrink-0" />
-                  <span>Interactive heuristic preview. Confidential &amp; private — no input data is stored or transmitted.</span>
-                </div>
-              </div>
-            </Card>
-          </motion.div>
-        </div>
-      </section>
-
       {/* Features Showcase Section ("How Mind Care Helps You") */}
       <section className="relative py-20 px-4">
         <div className="max-w-6xl mx-auto space-y-12">
@@ -363,7 +278,7 @@ export default function Home() {
       </section>
 
       {/* How It Works Section */}
-      <section className="relative py-20 px-4 bg-muted/20 border-y border-border/40">
+      <section className="relative py-20 px-4 bg-muted/20 border-t border-border/40 pb-28">
         <div className="max-w-6xl mx-auto space-y-14">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -402,65 +317,6 @@ export default function Home() {
               </motion.div>
             ))}
           </div>
-        </div>
-      </section>
-
-      {/* Bottom CTA Banner */}
-      <section className="relative py-20 px-4">
-        <div className="max-w-4xl mx-auto">
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            whileInView={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.6 }}
-            viewport={{ once: true }}
-            className="relative overflow-hidden rounded-3xl p-8 sm:p-12 text-center bg-gradient-to-r from-primary/15 via-primary/10 to-teal-500/15 border border-primary/25 shadow-2xl space-y-6"
-          >
-            <div className="space-y-3">
-              <h2 className="text-3xl sm:text-4xl font-extrabold font-heading text-foreground">
-                Ready to Start Your Mental Health Journey?
-              </h2>
-              <p className="text-muted-foreground max-w-xl mx-auto text-sm sm:text-base">
-                Join thousands who find emotional clarity, stress relief, and 24/7 empathetic support with Mind Care.
-              </p>
-            </div>
-
-            <div className="flex flex-wrap justify-center items-center gap-4 pt-2">
-              <Button
-                asChild
-                size="lg"
-                className="h-12 px-8 rounded-full bg-primary hover:bg-primary/90 text-primary-foreground font-semibold shadow-lg shadow-primary/20 transition-all duration-300"
-              >
-                <Link href="/signup">
-                  <span className="flex items-center gap-2">
-                    Get Started Now
-                    <ArrowRight className="w-4 h-4" />
-                  </span>
-                </Link>
-              </Button>
-              <Button
-                asChild
-                variant="outline"
-                size="lg"
-                className="h-12 px-8 rounded-full border-border/80 hover:bg-muted font-semibold transition-all duration-300"
-              >
-                <Link href="/login">
-                  <span>Sign In</span>
-                </Link>
-              </Button>
-            </div>
-
-            <div className="flex items-center justify-center gap-6 pt-4 text-xs font-medium text-muted-foreground">
-              <span className="flex items-center gap-1.5">
-                <CheckCircle2 className="w-4 h-4 text-emerald-500" /> 100% Confidential
-              </span>
-              <span className="flex items-center gap-1.5">
-                <CheckCircle2 className="w-4 h-4 text-emerald-500" /> 24/7 Availability
-              </span>
-              <span className="flex items-center gap-1.5">
-                <CheckCircle2 className="w-4 h-4 text-emerald-500" /> Voice &amp; Text Capable
-              </span>
-            </div>
-          </motion.div>
         </div>
       </section>
     </div>

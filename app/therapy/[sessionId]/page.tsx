@@ -404,7 +404,7 @@ export default function TherapyPage() {
             {messages.length === 0 ? (
               <div className="flex-1 flex items-center justify-center p-6 overflow-y-auto">
                 <div className="max-w-2xl w-full space-y-6 text-center">
-                  <div className="space-y-3">
+                  <div className="space-y-3 mt-6">
                     <div className="relative inline-flex flex-col items-center">
                       <motion.div
                         className="absolute inset-0 bg-primary/20 blur-3xl rounded-full"
@@ -412,7 +412,7 @@ export default function TherapyPage() {
                         animate="animate"
                         variants={glowAnimation}
                       />
-                      <div className="relative flex items-center gap-2.5 text-3xl font-bold font-heading">
+                      <div className="relative flex items-center gap-2.5 text-3xl font-bold font-heading mt-4">
                         <div className="w-12 h-12 rounded-2xl bg-primary/10 text-primary flex items-center justify-center shadow-inner">
                           <Sparkles className="w-6 h-6" />
                         </div>
