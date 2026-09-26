@@ -152,50 +152,7 @@ export default function ReportsPage() {
           </div>
         </motion.div>
 
-        {/* Wellness Insights Grid */}
-        <div className="space-y-3">
-          <div className="flex items-center justify-between">
-            <h2 className="text-xl font-bold font-heading">AI Wellness Insights</h2>
-            <span className="text-xs text-muted-foreground flex items-center gap-1">
-              <Calendar className="w-3.5 h-3.5" /> Generated {format(new Date(), "MMM d, yyyy")}
-            </span>
-          </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {isLoading ? (
-              Array.from({ length: 3 }).map((_, i) => (
-                <Skeleton key={i} className="h-28 rounded-3xl" />
-              ))
-            ) : (
-              insights.map((insight, i) => (
-                <motion.div
-                  key={insight.id}
-                  initial={{ opacity: 0, y: 10 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ duration: 0.4, delay: i * 0.08 }}
-                >
-                  <Card className="h-full bg-gradient-to-br from-primary/10 via-card to-card border-primary/20 shadow-xs hover:shadow-md transition-shadow rounded-3xl">
-                    <CardContent className="p-5 flex items-start gap-3.5">
-                      <div className="w-10 h-10 rounded-2xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
-                        {i === 0 ? (
-                          <Sparkles className="w-5 h-5 text-primary" />
-                        ) : i === 1 ? (
-                          <Brain className="w-5 h-5 text-primary" />
-                        ) : (
-                          <Award className="w-5 h-5 text-primary" />
-                        )}
-                      </div>
-                      <p className="text-xs sm:text-sm text-foreground/90 leading-relaxed font-medium">
-                        {insight.text}
-                      </p>
-                    </CardContent>
-                  </Card>
-                </motion.div>
-              ))
-            )}
-          </div>
-        </div>
 
         {/* Analytics Charts Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
